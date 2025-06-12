@@ -796,6 +796,8 @@ Make sure to include both BRANCH: and COMMIT: labels in your response.`;
         });
 
         let history = data.history || [];
+        // Store all history temporarily for index calculation in createHistoryItemHtml
+        localStorage.setItem('temp_all_history', JSON.stringify(history));
         
         // Filter history if search term provided
         if (searchTerm.trim()) {
@@ -811,6 +813,8 @@ Make sure to include both BRANCH: and COMMIT: labels in your response.`;
                 ? `<div class="text-center text-gray-500 italic py-10 px-5">No history items found matching "${escapeHtml(searchTerm.trim())}"</div>`
                 : '<div class="text-center text-gray-500 italic py-10 px-5">No generation history yet. Generate some branch names and commit messages to see them here!</div>';
             elements.historyContainer.innerHTML = message;
+            // Clean up temporary localStorage
+            localStorage.removeItem('temp_all_history');
             return;
         }
 
@@ -932,6 +936,8 @@ Make sure to include both BRANCH: and COMMIT: labels in your response.`;
                 selection.addRange(range);
             });
         });
+        // Clean up temporary localStorage
+        localStorage.removeItem('temp_all_history');
     }
 
     function filterHistory() {
@@ -1579,6 +1585,15 @@ Make sure to include both BRANCH: and COMMIT: labels in your response.`;
             </div>
         `;
         
+        // Get all history to properly set indexes for cached items
+        const data = await new Promise(resolve => {
+            chrome.storage.local.get(['history'], resolve);
+        });
+        const allHistory = data.history || [];
+        
+        // Store all history temporarily for index calculation in createHistoryItemHtml
+        localStorage.setItem('temp_all_history', JSON.stringify(allHistory));
+        
         // Display matches grouped by type
         const priorityOrder = ['exact-url', 'task-id', 'title-similarity', 'domain-context'];
         
@@ -1603,12 +1618,6 @@ Make sure to include both BRANCH: and COMMIT: labels in your response.`;
             </div>
         `;
         
-        // Get all history to show non-matching items below
-        const data = await new Promise(resolve => {
-            chrome.storage.local.get(['history'], resolve);
-        });
-        
-        const allHistory = data.history || [];
         const matchingIndexes = new Set(matches.map(m => m.originalIndex));
         const otherHistory = allHistory.filter((_, index) => !matchingIndexes.has(index));
         
@@ -1617,6 +1626,9 @@ Make sure to include both BRANCH: and COMMIT: labels in your response.`;
             : '<div class="text-center text-gray-500 italic py-4">No other recent history</div>';
         
         elements.historyContainer.innerHTML = cachedResultsHtml + otherHistoryHtml;
+        
+        // Clean up temporary localStorage
+        localStorage.removeItem('temp_all_history');
         
         // Add event listeners for all buttons
         addHistoryEventListeners();
