@@ -1,0 +1,58 @@
+/* custom.css */
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-animation {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.rate-limit-progress.warning {
+    background: linear-gradient(90deg, #ed8936, #dd6b20) !important;
+}
+
+.rate-limit-progress.danger {
+    background: linear-gradient(90deg, #e53e3e, #c53030) !important;
+}
+
+/* Styles for Edit Modal Inputs */
+.edit-modal-content input[type="text"],
+.edit-modal-content input[type="url"],
+.edit-modal-content textarea {
+    color: #374151; /* Equivalent to Tailwind's text-gray-700 */
+}
+
+/* Hide scrollbars for Webkit browsers (Chrome, Safari, Edge) */
+body::-webkit-scrollbar,
+textarea::-webkit-scrollbar,
+#historyContainer::-webkit-scrollbar,
+.edit-modal-content::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbars for Firefox */
+body,
+textarea,
+#historyContainer,
+.edit-modal-content {
+    scrollbar-width: none;
+}
+
+/* Hide scrollbars for IE/Edge (older versions) */
+body,
+textarea,
+#historyContainer,
+.edit-modal-content {
+    -ms-overflow-style: none;
+}
+
+.edit-modal-content {
+    -ms-overflow-style: none;
+}
