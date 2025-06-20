@@ -634,4 +634,67 @@ export class HistoryTab {
             }, 100);
         }
     }
+
+    async searchAndHighlightTask(taskId) {
+        // Set the search field with the task ID
+        this.elements.historySearch.value = taskId;
+        this.toggleClearSearchButton();
+        
+        // Clear any status filter to ensure we can find the item
+        this.elements.statusFilter.value = '';
+        
+        // Load history with the search term
+        await this.loadHistory(taskId, '');
+        
+        // Show the auto-search indicator
+        this.showAutoSearchIndicator(taskId);
+        
+        // Highlight the matching item(s)
+        setTimeout(() => {
+            this.highlightMatchingItems(taskId);
+        }, 100);
+    }    highlightMatchingItems(taskId) {
+        // Find all history items that match the task ID
+        const historyItems = this.elements.historyContainer.querySelectorAll('[data-history-index]');
+        let foundMatch = false;
+        let firstMatch = null;
+        
+        historyItems.forEach(item => {
+            const taskIdElement = item.querySelector('a[title="Open original task"], .font-semibold');
+            if (taskIdElement) {
+                const itemText = taskIdElement.textContent || '';
+                // Check if the task ID matches (case-insensitive)
+                if (itemText.toLowerCase().includes(taskId.toLowerCase())) {
+                    // Add a highlight border and background
+                    item.style.border = '2px solid #3b82f6';
+                    item.style.backgroundColor = '#eff6ff';
+                    item.classList.add('shadow-lg');
+                    
+                    if (!foundMatch) {
+                        firstMatch = item;
+                        foundMatch = true;
+                    }
+                    
+                    // Remove highlight after 5 seconds
+                    setTimeout(() => {
+                        item.style.border = '';
+                        item.style.backgroundColor = '';
+                        item.classList.remove('shadow-lg');
+                    }, 5000);
+                }
+            }
+        });
+        
+        // Scroll the first match into view
+        if (firstMatch) {
+            firstMatch.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center',
+                inline: 'nearest' 
+            });
+            Utils.showNotification(`Highlighted matching task: ${taskId}`, 'success');
+        } else {
+            Utils.showNotification(`Task ${taskId} not found in current view`, 'warning');
+        }
+    }
 }

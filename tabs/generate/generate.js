@@ -598,34 +598,92 @@ Return ONLY in this exact JSON format:
                     const gitlabData = result[0].result;
                     
                     if (gitlabData.taskId) {
-                        // First, auto-fill the form with GitLab data
-                        await this.autoFillFromGitLab(gitlabData);
-                        
-                        // Then, process and update history
-                        await this.processGitLabTaskData(gitlabData);
+                        // Search history first for this task ID
+                        const historyMatch = await this.searchHistoryForTask(gitlabData.taskId);
+                          if (historyMatch) {
+                            // Found in history - switch to History tab and show the item
+                            Utils.showNotification(`Found task ${gitlabData.taskId} in history - switching to History tab`, 'success');
+                            
+                            // Still update history with GitLab link and branch name if needed
+                            await this.processGitLabTaskData(gitlabData);
+                            
+                            // Switch to History tab and highlight the item
+                            this.switchToHistoryAndHighlight(gitlabData.taskId);
+                        } else {
+                            // Not found in history - use GitLab data only
+                            if (gitlabData.taskId) {
+                                this.elements.taskId.value = gitlabData.taskId;
+                            }
+                            if (gitlabData.title) {
+                                const cleanTitle = gitlabData.title.replace(/^(feat|fix|chore|docs|style|refactor|test):\s*/i, '');
+                                this.elements.taskTitle.value = cleanTitle;
+                            }
+                            this.updatePriorityIndicator();
+                            this.autoSave();
+                            Utils.showNotification(`Auto-filled from GitLab for task ${gitlabData.taskId}`, 'success');
+                        }
                     }
                 }
-            } else {
-                // Try ClickUp auto-fill for other pages
-                console.log('Attempting ClickUp auto-fill from tab:', tab.url);
+            } else if (tab.url.startsWith('https://app.clickup.com/t/')) {
+                // ClickUp task page - try history first, then auto-fill from page
+                console.log('Detected ClickUp task page, searching history first...');
                 
+                // First extract task ID from the page to search history
                 const result = await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     function: extractTaskDataFromPage
                 });
 
                 if (result && result[0] && result[0].result) {
-                    const data = result[0].result;
-                    if (data && (data.id || data.title || data.description)) {
-                        this.fillFormWithData(data);
-                        Utils.showNotification('Auto-filled from ClickUp!', 'success');
+                    const pageData = result[0].result;
+                    
+                    if (pageData.id) {
+                        // Search history for this task ID
+                        const historyMatch = await this.searchHistoryForTask(pageData.id);
+                          if (historyMatch) {
+                            // Found in history - switch to History tab and show the item
+                            Utils.showNotification(`Found task ${pageData.id} in history - switching to History tab`, 'success');
+                            this.switchToHistoryAndHighlight(pageData.id);
+                        } else {
+                            // Not found in history - auto-fill from page
+                            this.fillFormWithData(pageData);
+                            Utils.showNotification('Auto-filled from ClickUp page!', 'success');
+                        }
+                    } else if (pageData.title || pageData.description) {
+                        // No task ID but has other data - just fill from page
+                        this.fillFormWithData(pageData);
+                        Utils.showNotification('Auto-filled from ClickUp page!', 'success');
                     }
                 }
             }
+            // For all other pages, do nothing (no auto-search)
+            
         } catch (error) {
             console.error('Auto-search error:', error);
             // Fail silently for auto-search
         }
+    }
+
+    async searchHistoryForTask(taskId) {
+        const data = await Utils.getStorageData(['history']);
+        const history = data.history || [];
+        
+        return history.find(item => 
+            item.taskId && item.taskId.toUpperCase() === taskId.toUpperCase()
+        );
+    }
+
+    fillFormWithHistoryData(historyItem) {
+        if (historyItem.taskId) this.elements.taskId.value = historyItem.taskId;
+        if (historyItem.taskTitle) this.elements.taskTitle.value = historyItem.taskTitle;
+        if (historyItem.taskDescription) this.elements.taskDescription.value = historyItem.taskDescription;
+        if (historyItem.taskPriority) {
+            this.elements.taskPriority.value = historyItem.taskPriority;
+            this.showPriorityIndicator(`Auto-detected priority from history: ${historyItem.taskPriority}`);
+        }
+
+        this.updatePriorityIndicator();
+        this.autoSave();
     }
 
     async autoFillFromGitLab(gitlabData) {
@@ -760,5 +818,21 @@ Return ONLY in this exact JSON format:
 
     hideError() {
         this.elements.error.classList.add('hidden');
+    }
+
+    switchToHistoryAndHighlight(taskId) {
+        // Get the tab manager from the global application object
+        const tabManager = window.application?.tabManager;
+        const historyTab = window.application?.tabs?.history;
+        
+        if (tabManager && historyTab) {
+            // Switch to the History tab
+            tabManager.switchTab('history');
+            
+            // Wait a bit for the tab to switch, then search and highlight
+            setTimeout(() => {
+                historyTab.searchAndHighlightTask(taskId);
+            }, 100);
+        }
     }
 }
