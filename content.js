@@ -114,18 +114,21 @@
             .substring(0, 500); // Limit length to avoid too long descriptions
     }
     
-    // Auto-extract data when page loads (for context menu functionality)
+    // Auto-extract data when page loads (only on ClickUp pages)
     window.addEventListener('load', () => {
-        setTimeout(() => {
-            const data = extractTaskData();
-            if (data.id || data.title) {
-                // Store extracted data for later use
-                chrome.storage.local.set({ 
-                    lastExtractedData: data,
-                    extractedAt: Date.now()
-                });
-            }
-        }, 2000); // Wait 2 seconds for page to fully load
+        // Only extract data if we're on a ClickUp task page
+        if (window.location.href.startsWith('https://app.clickup.com/t/')) {
+            setTimeout(() => {
+                const data = extractTaskData();
+                if (data.id || data.title) {
+                    // Store extracted data for later use
+                    chrome.storage.local.set({ 
+                        lastExtractedData: data,
+                        extractedAt: Date.now()
+                    });
+                }
+            }, 2000); // Wait 2 seconds for page to fully load
+        }
     });
     
     // Make the extraction function available globally for background script

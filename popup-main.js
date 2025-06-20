@@ -166,7 +166,7 @@ class Application {
             if (!tab || !tab.url) return;
             
             // Check if we're on ClickUp
-            if (tab.url.includes('app.clickup.com/t')) {
+            if (tab.url.startsWith('https://app.clickup.com/t/')) {
                 // Try to extract task data from the current page
                 try {
                     const response = await chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_TASK_DATA' });
@@ -181,18 +181,20 @@ class Application {
                 }
             }
             
-            // Fallback: Check for recently extracted data from storage
-            const data = await new Promise(resolve => {
-                chrome.storage.local.get(['lastExtractedData', 'extractedAt'], resolve);
-            });
-            
-            if (data.lastExtractedData && data.extractedAt) {
-                // Check if the data was extracted recently (within last 30 seconds)
-                const timeDiff = Date.now() - data.extractedAt;
-                if (timeDiff < 30000 && (data.lastExtractedData.id || data.lastExtractedData.title)) {
-                    // Switch to History tab to trigger auto-search
-                    this.tabManager.switchTab('history');
-                    return true;
+            // Fallback: Check for recently extracted data from storage, but only if we're still on ClickUp
+            if (tab.url.startsWith('https://app.clickup.com/t/')) {
+                const data = await new Promise(resolve => {
+                    chrome.storage.local.get(['lastExtractedData', 'extractedAt'], resolve);
+                });
+                
+                if (data.lastExtractedData && data.extractedAt) {
+                    // Check if the data was extracted recently (within last 30 seconds)
+                    const timeDiff = Date.now() - data.extractedAt;
+                    if (timeDiff < 30000 && (data.lastExtractedData.id || data.lastExtractedData.title)) {
+                        // Switch to History tab to trigger auto-search
+                        this.tabManager.switchTab('history');
+                        return true;
+                    }
                 }
             }
             

@@ -525,7 +525,7 @@ export class HistoryTab {
             if (!tab || !tab.url) return;
             
             // Check if we're on ClickUp
-            if (tab.url.includes('app.clickup.com/t')) {
+            if (tab.url.startsWith('https://app.clickup.com/t/')) {
                 // Try to extract task data from the current page
                 try {
                     const response = await chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_TASK_DATA' });
@@ -552,31 +552,33 @@ export class HistoryTab {
                 }
             }
             
-            // Fallback: Check for recently extracted data from storage
-            const data = await new Promise(resolve => {
-                chrome.storage.local.get(['lastExtractedData', 'extractedAt'], resolve);
-            });
-            
-            if (data.lastExtractedData && data.extractedAt) {
-                // Check if the data was extracted recently (within last 30 seconds)
-                const timeDiff = Date.now() - data.extractedAt;
-                if (timeDiff < 30000) { // 30 seconds
-                    const extractedData = data.lastExtractedData;
-                    if (extractedData.id || extractedData.title) {
-                        const searchTerm = extractedData.id || extractedData.title;
-                        
-                        // Set the search input and perform search
-                        this.elements.historySearch.value = searchTerm;
-                        this.toggleClearSearchButton();
-                        this.loadHistory(searchTerm, '');
-                        
-                        // Show the auto-search indicator
-                        this.showAutoSearchIndicator(searchTerm);
-                        
-                        // Show notification about auto-search
-                        Utils.showNotification(`Auto-searching for: ${searchTerm}`);
-                        
-                        return true; // Found and searched
+            // Fallback: Check for recently extracted data from storage, but only if we're still on ClickUp
+            if (tab.url.startsWith('https://app.clickup.com/t/')) {
+                const data = await new Promise(resolve => {
+                    chrome.storage.local.get(['lastExtractedData', 'extractedAt'], resolve);
+                });
+                
+                if (data.lastExtractedData && data.extractedAt) {
+                    // Check if the data was extracted recently (within last 30 seconds)
+                    const timeDiff = Date.now() - data.extractedAt;
+                    if (timeDiff < 30000) { // 30 seconds
+                        const extractedData = data.lastExtractedData;
+                        if (extractedData.id || extractedData.title) {
+                            const searchTerm = extractedData.id || extractedData.title;
+                            
+                            // Set the search input and perform search
+                            this.elements.historySearch.value = searchTerm;
+                            this.toggleClearSearchButton();
+                            this.loadHistory(searchTerm, '');
+                            
+                            // Show the auto-search indicator
+                            this.showAutoSearchIndicator(searchTerm);
+                            
+                            // Show notification about auto-search
+                            Utils.showNotification(`Auto-searching for: ${searchTerm}`);
+                            
+                            return true; // Found and searched
+                        }
                     }
                 }
             }

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Search Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-case {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .url-example {
+            background: #f5f5f5;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            margin: 5px 0;
+        }
+        .result {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        .should-trigger {
+            background: #d4edda;
+            color: #155724;
+        }
+        .should-not-trigger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .note {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Auto-Search Fix Test Cases</h1>
+    
+    <div class="note">
+        <strong>Bug Fix:</strong> Auto-search now only triggers on ClickUp task pages (URLs starting with <code>https://app.clickup.com/t/</code>).
+        Previously, it could trigger on any page due to cached data fallback logic.
+    </div>
+
+    <h2>Test Cases</h2>
+
+    <div class="test-case">
+        <h3>✅ Should Trigger Auto-Search</h3>
+        <div class="url-example">https://app.clickup.com/t/86duzb2wn</div>
+        <div class="url-example">https://app.clickup.com/t/123abc/task-name</div>
+        <div class="url-example">https://app.clickup.com/t/xyz789?view=comments</div>
+        <div class="result should-trigger">✓ Auto-search should work on these URLs</div>
+    </div>
+
+    <div class="test-case">
+        <h3>❌ Should NOT Trigger Auto-Search</h3>
+        <div class="url-example">https://app.clickup.com/dashboard</div>
+        <div class="url-example">https://app.clickup.com/spaces</div>
+        <div class="url-example">https://app.clickup.com/goals</div>
+        <div class="url-example">https://google.com</div>
+        <div class="url-example">https://github.com</div>
+        <div class="url-example">https://stackoverflow.com</div>
+        <div class="result should-not-trigger">✗ Auto-search should NOT work on these URLs</div>
+    </div>
+
+    <div class="test-case">
+        <h3>🔧 Edge Cases</h3>
+        <div class="url-example">https://app.clickup.com/team/settings</div>
+        <div class="url-example">https://help.clickup.com</div>
+        <div class="url-example">https://clickup.com</div>
+        <div class="result should-not-trigger">✗ Auto-search should NOT work on these URLs</div>
+    </div>
+
+    <h2>What Was Fixed</h2>
+    
+    <div class="test-case">
+        <h3>📝 Changes Made</h3>
+        <ul>
+            <li><strong>history.js:</strong> 
+                <ul>
+                    <li>Changed URL check from <code>includes('app.clickup.com/t')</code> to <code>startsWith('https://app.clickup.com/t/')</code></li>
+                    <li>Added URL validation to fallback logic that uses cached data</li>
+                </ul>
+            </li>
+            <li><strong>popup-main.js:</strong>
+                <ul>
+                    <li>Changed URL check from <code>includes('app.clickup.com/t')</code> to <code>startsWith('https://app.clickup.com/t/')</code></li>
+                    <li>Added URL validation to fallback logic that uses cached data</li>
+                </ul>
+            </li>
+            <li><strong>content.js:</strong>
+                <ul>
+                    <li>Added URL validation to page load listener - now only extracts data on ClickUp task pages</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="test-case">
+        <h3>🎯 Expected Behavior</h3>
+        <ul>
+            <li>Auto-search only triggers when opening the extension on a ClickUp task page (URL starts with <code>https://app.clickup.com/t/</code>)</li>
+            <li>No auto-search triggers on non-ClickUp pages, even if there's cached task data</li>
+            <li>Content script only extracts task data on ClickUp task pages</li>
+            <li>Fallback logic (using cached data) also checks current URL before proceeding</li>
+        </ul>
+    </div>
+
+    <h2>How to Test</h2>
+    
+    <div class="test-case">
+        <h3>🧪 Manual Testing Steps</h3>
+        <ol>
+            <li>Navigate to a ClickUp task page (e.g., <code>https://app.clickup.com/t/86duzb2wn</code>)</li>
+            <li>Open the extension - should auto-search and show the blue indicator</li>
+            <li>Navigate to a non-ClickUp page (e.g., Google.com)</li>
+            <li>Open the extension - should NOT auto-search</li>
+            <li>Navigate to a ClickUp non-task page (e.g., <code>https://app.clickup.com/dashboard</code>)</li>
+            <li>Open the extension - should NOT auto-search</li>
+        </ol>
+    </div>
+
+    <div class="note">
+        <strong>Note:</strong> The fix ensures that auto-search functionality is properly scoped to only ClickUp task pages, 
+        preventing unwanted behavior on other websites or ClickUp pages that aren't task-specific.
+    </div>
+</body>
+</html>
