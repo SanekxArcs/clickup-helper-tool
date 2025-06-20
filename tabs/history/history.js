@@ -5,6 +5,23 @@ export class HistoryTab {
         this.elements = {};
         this.editModal = null;
         this.currentEditIndex = null;
+        
+        // Status configuration with colors
+        this.statusConfig = {
+            'in-specification': { label: 'In Specification', color: '#ffc53d' },
+            'in-progress': { label: 'In Progress', color: '#cf1761' },
+            'code-review': { label: 'Code Review', color: '#8cb99b' },
+            'completed': { label: 'Completed', color: '#000000' },
+            'in-review': { label: 'In Review', color: '#c36522' },
+            'rejected-cr': { label: 'Rejected (CR)', color: '#606060' },
+            'rejected': { label: 'Rejected', color: '#9e49ab' },
+            'blocked': { label: 'Blocked', color: '#8d7266' },
+            'done': { label: 'Done', color: '#ffffff', textColor: '#000000' },
+            'on-hold': { label: 'On Hold', color: '#d21e24' },
+            'ready-release': { label: 'Ready to Release', color: '#3b5dce' },
+            'closed': { label: 'Closed', color: '#2c8c5e' }
+        };
+        
         this.initialize();
     }
 
@@ -18,6 +35,9 @@ export class HistoryTab {
             historyContainer: document.getElementById('historyContainer'),
             clearHistoryBtn: document.getElementById('clearHistoryBtn'),
             historySearch: document.getElementById('historySearch'),
+            clearSearchBtn: document.getElementById('clearSearchBtn'),
+            statusFilter: document.getElementById('statusFilter'),
+            autoSearchIndicator: document.getElementById('autoSearchIndicator'),
             // Edit modal elements
             editModal: document.getElementById('editModal'),
             editModalCloseBtn: document.getElementById('editModalCloseBtn'),
@@ -28,7 +48,8 @@ export class HistoryTab {
             editTaskDescription: document.getElementById('editTaskDescription'),
             editSourceUrl: document.getElementById('editSourceUrl'),
             editBranchName: document.getElementById('editBranchName'),
-            editCommitMessage: document.getElementById('editCommitMessage')
+            editCommitMessage: document.getElementById('editCommitMessage'),
+            editStatus: document.getElementById('editStatus')
         };
     }
 
@@ -38,7 +59,24 @@ export class HistoryTab {
         }
 
         if (this.elements.historySearch) {
-            this.elements.historySearch.addEventListener('input', () => this.filterHistory());
+            this.elements.historySearch.addEventListener('input', () => {
+                this.hideAutoSearchIndicator();
+                this.toggleClearSearchButton();
+                this.filterHistory();
+            });
+        }
+
+        if (this.elements.clearSearchBtn) {
+            this.elements.clearSearchBtn.addEventListener('click', () => {
+                this.clearSearchField();
+            });
+        }
+
+        if (this.elements.statusFilter) {
+            this.elements.statusFilter.addEventListener('change', () => {
+                this.hideAutoSearchIndicator();
+                this.filterHistory();
+            });
         }
 
         // Edit modal event listeners
@@ -65,9 +103,17 @@ export class HistoryTab {
     }
 
     // Tab lifecycle methods
-    onActivate() {
-        this.elements.historySearch.value = '';
-        this.loadHistory();
+    async onActivate() {
+        // Check if we're on a ClickUp page and auto-search
+        const autoSearchPerformed = await this.checkForAutoSearch();
+        
+        // Only clear search and load default history if no auto-search was performed
+        if (!autoSearchPerformed) {
+            this.elements.historySearch.value = '';
+            this.elements.statusFilter.value = '';
+            this.toggleClearSearchButton();
+            this.loadHistory();
+        }
     }
 
     onDeactivate() {
@@ -81,6 +127,12 @@ export class HistoryTab {
         });
 
         const history = data.history || [];
+        
+        // Add default status if not provided
+        if (!item.status) {
+            item.status = 'in-progress';
+        }
+        
         history.unshift(item); // Add to beginning
         
         // Keep only last 50 items
@@ -91,7 +143,7 @@ export class HistoryTab {
         chrome.storage.local.set({ history });
     }
 
-    async loadHistory(searchTerm = '') {
+    async loadHistory(searchTerm = '', statusFilter = '') {
         const data = await new Promise(resolve => {
             chrome.storage.local.get(['history'], resolve);
         });
@@ -107,10 +159,26 @@ export class HistoryTab {
             );
         }
         
+        // Filter by status if provided
+        if (statusFilter.trim()) {
+            history = history.filter(item => 
+                (item.status || 'in-progress') === statusFilter
+            );
+        }
+        
         if (history.length === 0) {
-            const message = searchTerm.trim() 
-                ? `<div class="text-center text-gray-500 italic py-10 px-5">No history items found matching "${Utils.escapeHtml(searchTerm.trim())}"</div>`
-                : '<div class="text-center text-gray-500 italic py-10 px-5">No generation history yet. Generate some branch names and commit messages to see them here!</div>';
+            let message;
+            if (searchTerm.trim() && statusFilter.trim()) {
+                const statusLabel = this.statusConfig[statusFilter]?.label || statusFilter;
+                message = `<div class="text-center text-gray-500 italic py-10 px-5">No ${statusLabel.toLowerCase()} items found matching "${Utils.escapeHtml(searchTerm.trim())}"</div>`;
+            } else if (searchTerm.trim()) {
+                message = `<div class="text-center text-gray-500 italic py-10 px-5">No history items found matching "${Utils.escapeHtml(searchTerm.trim())}"</div>`;
+            } else if (statusFilter.trim()) {
+                const statusLabel = this.statusConfig[statusFilter]?.label || statusFilter;
+                message = `<div class="text-center text-gray-500 italic py-10 px-5">No items with status "${statusLabel}"</div>`;
+            } else {
+                message = '<div class="text-center text-gray-500 italic py-10 px-5">No generation history yet. Generate some branch names and commit messages to see them here!</div>';
+            }
             this.elements.historyContainer.innerHTML = message;
             return;
         }
@@ -141,13 +209,21 @@ export class HistoryTab {
             ? `<a href="${Utils.escapeHtml(item.sourceUrl)}" target="_blank" class="text-primary no-underline font-semibold hover:underline hover:text-primary-dark" title="Open original task">${highlightedTaskId}: ${highlightedTitle}</a>`
             : `${highlightedTaskId}: ${highlightedTitle}`;
         
+        // Create status selector
+        const currentStatus = item.status || 'in-progress';
+        const statusSelector = this.createStatusSelector(currentStatus, realIndex);
+        
         return `
-            <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 relative" data-history-index="${realIndex}">
-                <div class="absolute top-1 right-1 flex gap-1">
-                    <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-[100px] hover:bg-gray-100 transition-all duration-300" data-edit-index="${realIndex}" title="Edit this item">✏️</button>
-                    <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-[100px] hover:bg-red-100 transition-all duration-300" data-delete-index="${realIndex}">🗑️</button>
+            <div class="bg-white border related border-gray-200 rounded-lg p-4 mb-4 relative" data-history-index="${realIndex}">
+                <div class="absolute bottom-1 right-0 left-0 flex justify-between w-full gap-2 px-6">
+                    <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-gray-100 transition-all duration-300" data-edit-index="${realIndex}" title="Edit this item">✏️</button>
+                    <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-red-100 transition-all duration-300" data-delete-index="${realIndex}">🗑️</button>
                 </div>
-                <div class="text-xs text-gray-500 mb-2.5">${new Date(item.timestamp).toLocaleString()}</div>
+                
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-xs text-gray-500">${new Date(item.timestamp).toLocaleString()}</div>
+                    ${statusSelector}
+                </div>
 
                 <div class="bg-gray-50 p-2.5 rounded-md font-mono text-xs mb-2.5">
                     <div class="flex flex-row items-center gap-2 mb-2">
@@ -186,6 +262,24 @@ export class HistoryTab {
                         ${item.commitMessage ? `<button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-full hover:bg-emerald-100 transition-all duration-300" data-commit-text="${Utils.escapeAttr(item.commitMessage)}" data-task-id="${Utils.escapeAttr(item.taskId)}">📋 Git console command</button>` : ''}
                     </div>
                 </div>
+            </div>
+        `;
+    }
+
+    createStatusSelector(currentStatus, itemIndex) {
+        const statusConfig = this.statusConfig[currentStatus] || this.statusConfig['in-progress'];
+        const textColor = statusConfig.textColor || '#ffffff';
+        
+        return `
+            <div class="status-selector relative">
+                <select class="status-select px-2 py-1 rounded text-xs font-medium border-none cursor-pointer focus:outline-none transition-all duration-200" 
+                        style="background-color: ${statusConfig.color}; color: ${textColor};" 
+                        data-item-index="${itemIndex}">
+                    ${Object.entries(this.statusConfig).map(([key, config]) => {
+                        const selected = key === currentStatus ? 'selected' : '';
+                        return `<option value="${key}" ${selected} style="background-color: ${config.color}; color: ${config.textColor || '#ffffff'};">${config.label}</option>`;
+                    }).join('')}
+                </select>
             </div>
         `;
     }
@@ -242,11 +336,28 @@ export class HistoryTab {
                 selection.addRange(range);
             });
         });
+
+        // Add change listeners to status selectors
+        const statusSelectors = this.elements.historyContainer.querySelectorAll('.status-select');
+        statusSelectors.forEach(selector => {
+            selector.addEventListener('change', (e) => {
+                const itemIndex = parseInt(e.target.getAttribute('data-item-index'));
+                const newStatus = e.target.value;
+                this.updateItemStatus(itemIndex, newStatus);
+                
+                // Update the selector's appearance
+                const statusConfig = this.statusConfig[newStatus];
+                const textColor = statusConfig.textColor || '#ffffff';
+                e.target.style.backgroundColor = statusConfig.color;
+                e.target.style.color = textColor;
+            });
+        });
     }
 
     filterHistory() {
         const searchTerm = this.elements.historySearch.value;
-        this.loadHistory(searchTerm);
+        const statusFilter = this.elements.statusFilter.value;
+        this.loadHistory(searchTerm, statusFilter);
     }
 
     highlightSearchTerm(text, searchTerm) {
@@ -259,6 +370,29 @@ export class HistoryTab {
         const regex = new RegExp(`(${escapedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
         
         return escaped.replace(regex, '<span class="bg-yellow-300 px-0.5 py-0.5 rounded-sm">$1</span>');
+    }
+
+    toggleClearSearchButton() {
+        if (this.elements.clearSearchBtn) {
+            const hasText = this.elements.historySearch.value.trim().length > 0;
+            if (hasText) {
+                this.elements.clearSearchBtn.style.display = 'flex';
+                this.elements.clearSearchBtn.classList.remove('hidden');
+            } else {
+                this.elements.clearSearchBtn.style.display = 'none';
+                this.elements.clearSearchBtn.classList.add('hidden');
+            }
+        }
+    }
+
+    clearSearchField() {
+        if (this.elements.historySearch) {
+            this.elements.historySearch.value = '';
+            this.hideAutoSearchIndicator();
+            this.toggleClearSearchButton();
+            this.filterHistory();
+            this.elements.historySearch.focus(); // Keep focus on the search field
+        }
     }
 
     clearHistory() {
@@ -279,7 +413,7 @@ export class HistoryTab {
             if (index >= 0 && index < history.length) {
                 history.splice(index, 1);
                 chrome.storage.local.set({ history }, () => {
-                    this.loadHistory(); // Reload the history display
+                    this.filterHistory(); // Reload with current filters
                 });
             }
         }
@@ -304,6 +438,7 @@ export class HistoryTab {
         this.elements.editSourceUrl.value = item.sourceUrl || '';
         this.elements.editBranchName.value = item.branchName || '';
         this.elements.editCommitMessage.value = item.commitMessage || '';
+        this.elements.editStatus.value = item.status || 'in-progress';
         
         // Show modal
         this.elements.editModal.classList.remove('hidden');
@@ -339,6 +474,7 @@ export class HistoryTab {
         item.sourceUrl = this.elements.editSourceUrl.value.trim();
         item.branchName = this.elements.editBranchName.value.trim();
         item.commitMessage = this.elements.editCommitMessage.value.trim();
+        item.status = this.elements.editStatus.value;
         
         // Update timestamp to show it was edited
         item.lastEdited = Date.now();
@@ -346,8 +482,116 @@ export class HistoryTab {
         // Save to storage
         chrome.storage.local.set({ history }, () => {
             this.closeEditModal();
-            this.loadHistory(); // Reload history to show changes
+            this.filterHistory(); // Reload history with current filters to show changes
             Utils.showNotification('History item updated successfully');
         });
+    }
+
+    async updateItemStatus(itemIndex, newStatus) {
+        const data = await new Promise(resolve => {
+            chrome.storage.local.get(['history'], resolve);
+        });
+
+        const history = data.history || [];
+        
+        if (itemIndex >= 0 && itemIndex < history.length) {
+            history[itemIndex].status = newStatus;
+            history[itemIndex].statusUpdated = Date.now();
+            
+            chrome.storage.local.set({ history }, () => {
+                Utils.showNotification(`Status updated to ${this.statusConfig[newStatus].label}`);
+            });
+        }
+    }
+
+    async checkForAutoSearch() {
+        try {
+            // Get current tab URL to check if we're on ClickUp
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (!tab || !tab.url) return;
+            
+            // Check if we're on ClickUp
+            if (tab.url.includes('app.clickup.com/t')) {
+                // Try to extract task data from the current page
+                try {
+                    const response = await chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_TASK_DATA' });
+                    
+                    if (response && (response.id || response.title)) {
+                        // Auto-search for the task ID or title
+                        const searchTerm = response.id || response.title;
+                        
+                        // Set the search input and perform search
+                        this.elements.historySearch.value = searchTerm;
+                        this.toggleClearSearchButton();
+                        this.loadHistory(searchTerm, '');
+                        
+                        // Show the auto-search indicator
+                        this.showAutoSearchIndicator(searchTerm);
+                        
+                        // Show notification about auto-search
+                        Utils.showNotification(`Auto-searching for: ${searchTerm}`);
+                        
+                        return true; // Found and searched
+                    }
+                } catch (error) {
+                    console.log('Could not extract task data from current page:', error);
+                }
+            }
+            
+            // Fallback: Check for recently extracted data from storage
+            const data = await new Promise(resolve => {
+                chrome.storage.local.get(['lastExtractedData', 'extractedAt'], resolve);
+            });
+            
+            if (data.lastExtractedData && data.extractedAt) {
+                // Check if the data was extracted recently (within last 30 seconds)
+                const timeDiff = Date.now() - data.extractedAt;
+                if (timeDiff < 30000) { // 30 seconds
+                    const extractedData = data.lastExtractedData;
+                    if (extractedData.id || extractedData.title) {
+                        const searchTerm = extractedData.id || extractedData.title;
+                        
+                        // Set the search input and perform search
+                        this.elements.historySearch.value = searchTerm;
+                        this.toggleClearSearchButton();
+                        this.loadHistory(searchTerm, '');
+                        
+                        // Show the auto-search indicator
+                        this.showAutoSearchIndicator(searchTerm);
+                        
+                        // Show notification about auto-search
+                        Utils.showNotification(`Auto-searching for: ${searchTerm}`);
+                        
+                        return true; // Found and searched
+                    }
+                }
+            }
+            
+        } catch (error) {
+            console.log('Auto-search failed:', error);
+        }
+        
+        return false; // No auto-search performed
+    }
+
+    showAutoSearchIndicator(searchTerm) {
+        if (this.elements.autoSearchIndicator) {
+            this.elements.autoSearchIndicator.textContent = `🔍 Auto-searched: ${searchTerm}`;
+            this.elements.autoSearchIndicator.classList.remove('hidden');
+            
+            // Hide the indicator after 5 seconds
+            setTimeout(() => {
+                if (this.elements.autoSearchIndicator) {
+                    this.elements.autoSearchIndicator.classList.add('hidden');
+                }
+            }, 5000);
+        }
+    }
+
+    hideAutoSearchIndicator() {
+        if (this.elements.autoSearchIndicator) {
+            this.elements.autoSearchIndicator.classList.add('hidden');
+        }
     }
 }

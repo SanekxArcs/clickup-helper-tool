@@ -105,8 +105,13 @@ class Application {
         this.tabs.settings = new SettingsTab();
         this.tabManager.registerTab('settings', this.tabs.settings);
 
-        // Activate the default tab
-        this.tabManager.switchTab('generate');
+        // Check if we should auto-switch to History tab for ClickUp pages
+        await this.checkForAutoSwitchToHistory();
+        
+        // Activate the default tab (if not already switched)
+        if (this.tabManager.getCurrentTab() === 'generate') {
+            this.tabManager.switchTab('generate');
+        }
     }
 
     setupGlobalMessageListeners() {
@@ -145,6 +150,51 @@ class Application {
 
     handleCopyToClipboard(text) {
         Utils.copyText(text);
+    }
+
+    async checkForAutoSwitchToHistory() {
+        try {
+            // Get current tab URL to check if we're on ClickUp
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (!tab || !tab.url) return;
+            
+            // Check if we're on ClickUp
+            if (tab.url.includes('app.clickup.com/t')) {
+                // Try to extract task data from the current page
+                try {
+                    const response = await chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_TASK_DATA' });
+                    
+                    if (response && (response.id || response.title)) {
+                        // Switch to History tab to trigger auto-search
+                        this.tabManager.switchTab('history');
+                        return true;
+                    }
+                } catch (error) {
+                    console.log('Could not extract task data from current page:', error);
+                }
+            }
+            
+            // Fallback: Check for recently extracted data from storage
+            const data = await new Promise(resolve => {
+                chrome.storage.local.get(['lastExtractedData', 'extractedAt'], resolve);
+            });
+            
+            if (data.lastExtractedData && data.extractedAt) {
+                // Check if the data was extracted recently (within last 30 seconds)
+                const timeDiff = Date.now() - data.extractedAt;
+                if (timeDiff < 30000 && (data.lastExtractedData.id || data.lastExtractedData.title)) {
+                    // Switch to History tab to trigger auto-search
+                    this.tabManager.switchTab('history');
+                    return true;
+                }
+            }
+            
+        } catch (error) {
+            console.log('Auto-switch to history failed:', error);
+        }
+        
+        return false;
     }
 }
 

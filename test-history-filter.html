@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History Status Filter Test</title>
+    <script src="./tailwind_css.js"></script>
+    <link rel="stylesheet" href="custom.css">
+</head>
+<body class="p-8 bg-gray-100">
+    <h1 class="text-2xl font-bold mb-4">History Tab - Search & Status Filter Test</h1>
+    
+    <!-- Test the combined search and filter UI -->
+    <div class="mb-4">
+        <label for="historySearch" class="block mb-2 font-semibold text-gray-700">🔍 Search & Filter History:</label>
+        <div class="flex gap-2">
+            <input type="text" id="historySearch" placeholder="Search by task ID or title..." class="flex-1 p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+            <select id="statusFilter" class="px-3 py-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 bg-white min-w-[140px]">
+                <option value="">All Statuses</option>
+                <option value="in-specification">In Specification</option>
+                <option value="in-progress">In Progress</option>
+                <option value="code-review">Code Review</option>
+                <option value="completed">Completed</option>
+                <option value="in-review">In Review</option>
+                <option value="rejected-cr">Rejected (CR)</option>
+                <option value="rejected">Rejected</option>
+                <option value="blocked">Blocked</option>
+                <option value="done">Done</option>
+                <option value="on-hold">On Hold</option>
+                <option value="ready-release">Ready to Release</option>
+                <option value="closed">Closed</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Sample history items for testing -->
+    <div id="testResults" class="space-y-4">
+        <!-- Sample item 1 -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 relative" data-status="in-progress">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-xs text-gray-500">Dec 20, 2024 - 10:30 AM</div>
+                <div class="status-selector relative">
+                    <select class="status-select px-2 py-1 rounded text-xs font-medium border-none cursor-pointer focus:outline-none transition-all duration-200" 
+                            style="background-color: #cf1761; color: #ffffff;">
+                        <option value="in-progress" selected>In Progress</option>
+                    </select>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-2.5 rounded-md font-mono text-xs">
+                <div class="font-semibold text-gray-700 mb-2">TASK-123: User authentication feature</div>
+                <div class="text-gray-600">Implement login and registration functionality</div>
+            </div>
+        </div>
+
+        <!-- Sample item 2 -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 relative" data-status="done">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-xs text-gray-500">Dec 19, 2024 - 02:15 PM</div>
+                <div class="status-selector relative">
+                    <select class="status-select px-2 py-1 rounded text-xs font-medium border-none cursor-pointer focus:outline-none transition-all duration-200" 
+                            style="background-color: #ffffff; color: #000000; border: 1px solid #ddd;">
+                        <option value="done" selected>Done</option>
+                    </select>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-2.5 rounded-md font-mono text-xs">
+                <div class="font-semibold text-gray-700 mb-2">TASK-456: Fix navigation bug</div>
+                <div class="text-gray-600">Resolve mobile navigation menu issues</div>
+            </div>
+        </div>
+
+        <!-- Sample item 3 -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 relative" data-status="code-review">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-xs text-gray-500">Dec 18, 2024 - 04:45 PM</div>
+                <div class="status-selector relative">
+                    <select class="status-select px-2 py-1 rounded text-xs font-medium border-none cursor-pointer focus:outline-none transition-all duration-200" 
+                            style="background-color: #8cb99b; color: #ffffff;">
+                        <option value="code-review" selected>Code Review</option>
+                    </select>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-2.5 rounded-md font-mono text-xs">
+                <div class="font-semibold text-gray-700 mb-2">TASK-789: API integration</div>
+                <div class="text-gray-600">Connect frontend with backend API endpoints</div>
+            </div>
+        </div>
+
+        <!-- Sample item 4 -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 relative" data-status="blocked">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-xs text-gray-500">Dec 17, 2024 - 11:20 AM</div>
+                <div class="status-selector relative">
+                    <select class="status-select px-2 py-1 rounded text-xs font-medium border-none cursor-pointer focus:outline-none transition-all duration-200" 
+                            style="background-color: #8d7266; color: #ffffff;">
+                        <option value="blocked" selected>Blocked</option>
+                    </select>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-2.5 rounded-md font-mono text-xs">
+                <div class="font-semibold text-gray-700 mb-2">TASK-012: Database optimization</div>
+                <div class="text-gray-600">Waiting for DBA approval for schema changes</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+        <h3 class="font-semibold text-blue-800 mb-2">Test Instructions:</h3>
+        <ol class="text-sm text-blue-700 space-y-1">
+            <li>1. Try searching by task ID (e.g., "TASK-123" or "456")</li>
+            <li>2. Try searching by title keywords (e.g., "auth", "bug", "API")</li>
+            <li>3. Filter by status using the dropdown (e.g., "Done", "In Progress")</li>
+            <li>4. Combine search and filter (e.g., search "TASK" + filter "Code Review")</li>
+            <li>5. Notice the color-coded status options in the dropdown</li>
+        </ol>
+    </div>
+
+    <script>
+        // Test script to simulate filtering functionality
+        const searchInput = document.getElementById('historySearch');
+        const statusFilter = document.getElementById('statusFilter');
+        const testItems = document.querySelectorAll('[data-status]');
+
+        function filterItems() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusValue = statusFilter.value;
+            
+            let visibleCount = 0;
+            
+            testItems.forEach(item => {
+                const status = item.getAttribute('data-status');
+                const text = item.textContent.toLowerCase();
+                
+                const matchesSearch = !searchTerm || text.includes(searchTerm);
+                const matchesStatus = !statusValue || status === statusValue;
+                
+                if (matchesSearch && matchesStatus) {
+                    item.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Update results info
+            updateResultsInfo(visibleCount, searchTerm, statusValue);
+        }
+
+        function updateResultsInfo(count, search, status) {
+            const container = document.getElementById('testResults');
+            const existingInfo = container.querySelector('.results-info');
+            if (existingInfo) existingInfo.remove();
+            
+            if (search || status) {
+                const statusNames = {
+                    'in-progress': 'In Progress',
+                    'done': 'Done',
+                    'code-review': 'Code Review',
+                    'blocked': 'Blocked'
+                };
+                
+                let infoText = `Showing ${count} item${count !== 1 ? 's' : ''}`;
+                if (search && status) {
+                    infoText += ` matching "${search}" with status "${statusNames[status] || status}"`;
+                } else if (search) {
+                    infoText += ` matching "${search}"`;
+                } else if (status) {
+                    infoText += ` with status "${statusNames[status] || status}"`;
+                }
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'results-info text-sm text-gray-600 bg-gray-100 p-2 rounded mb-4';
+                infoDiv.textContent = infoText;
+                container.insertBefore(infoDiv, container.firstChild);
+            }
+        }
+
+        // Add event listeners
+        searchInput.addEventListener('input', filterItems);
+        statusFilter.addEventListener('change', filterItems);
+
+        // Initialize
+        filterItems();
+    </script>
+</body>
+</html>
