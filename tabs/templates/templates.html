@@ -1,0 +1,207 @@
+<!-- Templates Tab -->
+<div id="templates-tab" class="tab-content hidden">
+    <div class="space-y-6">
+        
+        <!-- Section 1: Send to Review -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                <span>👥 Send to Review</span>
+                <div class="flex gap-2">
+                    <button id="clearReviewBtn" class="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200" title="Clear to initial">🔄</button>
+                    <button id="reviewSettingsBtn" class="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200" title="Settings">⚙️</button>
+                </div>
+            </h3>
+            
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="reviewer1Select" class="block text-sm font-medium text-gray-700 mb-1">Reviewer 1:</label>
+                        <select id="reviewer1Select" class="w-full p-2 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Select Reviewer 1</option>
+                            <option value="reviewer1">@reviewer1</option>
+                            <option value="reviewer2">@reviewer2</option>
+                            <option value="reviewer3">@reviewer3</option>
+                            <option value="testuser1">@testuser1</option>
+                            <option value="testuser2">@testuser2</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="reviewer2Select" class="block text-sm font-medium text-gray-700 mb-1">Reviewer 2 (Optional):</label>
+                        <select id="reviewer2Select" class="w-full p-2 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Select Reviewer 2</option>
+                            <option value="reviewer1">@reviewer1</option>
+                            <option value="reviewer2">@reviewer2</option>
+                            <option value="reviewer3">@reviewer3</option>
+                            <option value="testuser1">@testuser1</option>
+                            <option value="testuser2">@testuser2</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="mergeRequestLink" class="block text-sm font-medium text-gray-700 mb-1">Merge Request Link:</label>
+                    <input type="text" id="mergeRequestLink" placeholder="https://gitlab.com/project/merge_requests/123" class="w-full p-2 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded-md">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Generated Message:</label>
+                    <div id="reviewMessage" class="bg-white p-2 border rounded text-sm font-mono min-h-[60px] whitespace-pre-wrap">Select reviewers and add link to generate message</div>
+                </div>
+                
+                <button id="copyReviewBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 disabled:bg-gray-300" disabled>
+                    📋 Copy Review Message
+                </button>
+            </div>
+        </div>
+
+        <!-- Section 2: Send to QA -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                <span>🧪 Send to QA</span>
+                <div class="flex gap-2">
+                    <button id="clearQaBtn" class="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200" title="Clear to initial">🔄</button>
+                    <button id="qaSettingsBtn" class="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200" title="Settings">⚙️</button>
+                </div>
+            </h3>
+            
+            <div class="space-y-3">
+                <div>
+                    <label for="testerSelect" class="block text-sm font-medium text-gray-700 mb-1">Tester:</label>
+                    <select id="testerSelect" class="w-full p-2 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500">
+                        <option value="">Select Tester</option>
+                        <option value="tester">@tester</option>
+                        <option value="qa1">@qa1</option>
+                        <option value="qa2">@qa2</option>
+                        <option value="testuser3">@testuser3</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="branchName" class="block text-sm font-medium text-gray-700 mb-1">Branch Name:</label>
+                    <input type="text" id="branchName" placeholder="feature/video_popup_size_fix_#WDEV-14120" class="w-full p-2 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded-md">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Generated Message:</label>
+                    <div id="qaMessage" class="bg-white p-2 border rounded text-sm font-mono min-h-[60px] whitespace-pre-wrap">Select tester and add branch name to generate message</div>
+                </div>
+                
+                <button id="copyQaBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 disabled:bg-gray-300" disabled>
+                    📋 Copy QA Message
+                </button>
+            </div>
+        </div>
+
+        <!-- Section 3: Comments Resolved -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center justify-between">
+                <span>✅ Comments Resolved</span>
+                <div class="flex gap-2">
+                    <button id="clearResolvedBtn" class="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200" title="Clear to initial">🔄</button>
+                    <button id="resolvedSettingsBtn" class="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200" title="Settings">⚙️</button>
+                </div>
+            </h3>
+            
+            <div class="space-y-3">
+                <div>
+                    <label for="resolvedReviewerSelect" class="block text-sm font-medium text-gray-700 mb-1">Reviewer:</label>
+                    <select id="resolvedReviewerSelect" class="w-full p-2 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500">
+                        <option value="">Select Reviewer</option>
+                        <option value="reviewer1">@reviewer1</option>
+                        <option value="reviewer2">@reviewer2</option>
+                        <option value="reviewer3">@reviewer3</option>
+                        <option value="testuser1">@testuser1</option>
+                        <option value="testuser2">@testuser2</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="resolvedLink" class="block text-sm font-medium text-gray-700 mb-1">GitLab Link:</label>
+                    <input type="text" id="resolvedLink" placeholder="https://gitlab.com/project/merge_requests/123" class="w-full p-2 border-2 border-gray-200 rounded-md text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded-md">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Generated Message:</label>
+                    <div id="resolvedMessage" class="bg-white p-2 border rounded text-sm font-mono min-h-[60px] whitespace-pre-wrap">Select reviewer and add link to generate message</div>
+                </div>
+                
+                <button id="copyResolvedBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 disabled:bg-gray-300" disabled>
+                    📋 Copy Resolved Message
+                </button>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Templates Settings Modal -->
+<div id="templatesSettingsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center hidden" style="display: none;">
+    <div class="bg-white rounded-lg p-6 w-[500px] max-w-[90vw] max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-700 m-0">⚙️ Templates Settings</h3>
+            <button id="templatesSettingsCloseBtn" class="text-gray-500 hover:text-red-500 text-2xl">&times;</button>
+        </div>
+        
+        <!-- Reviewers Section -->
+        <div class="mb-6">
+            <h4 class="text-md font-semibold text-gray-700 mb-3">👥 Reviewers</h4>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Available Reviewers:</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="newReviewerInput" placeholder="@username" class="flex-1 p-2 border border-gray-300 rounded text-sm">
+                    <button id="addReviewerBtn" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">Add</button>
+                </div>
+                <div id="reviewersList" class="space-y-2 max-h-32 overflow-y-auto">
+                    <!-- Reviewers will be added here -->
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Favorite Reviewers:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Primary Favorite:</label>
+                        <select id="favoriteReviewer1" class="w-full p-2 border border-gray-300 rounded text-sm">
+                            <option value="">None</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Secondary Favorite:</label>
+                        <select id="favoriteReviewer2" class="w-full p-2 border border-gray-300 rounded text-sm">
+                            <option value="">None</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- QA/Testers Section -->
+        <div class="mb-6">
+            <h4 class="text-md font-semibold text-gray-700 mb-3">🧪 QA/Testers</h4>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Available Testers:</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="newTesterInput" placeholder="@username" class="flex-1 p-2 border border-gray-300 rounded text-sm">
+                    <button id="addTesterBtn" class="bg-green-500 text-white px-3 py-2 rounded text-sm hover:bg-green-600">Add</button>
+                </div>
+                <div id="testersList" class="space-y-2 max-h-32 overflow-y-auto">
+                    <!-- Testers will be added here -->
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Favorite Tester:</label>
+                <select id="favoriteTester" class="w-full p-2 border border-gray-300 rounded text-sm">
+                    <option value="">None</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="flex gap-3 pt-4 border-t border-gray-200">
+            <button id="saveTemplatesSettingsBtn" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">💾 Save</button>
+            <button id="cancelTemplatesSettingsBtn" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">❌ Cancel</button>
+        </div>
+    </div>
+</div>

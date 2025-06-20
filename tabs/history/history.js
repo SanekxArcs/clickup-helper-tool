@@ -47,6 +47,7 @@ export class HistoryTab {
             editTaskTitle: document.getElementById('editTaskTitle'),
             editTaskDescription: document.getElementById('editTaskDescription'),
             editSourceUrl: document.getElementById('editSourceUrl'),
+            editGitlabMergeRequestUrl: document.getElementById('editGitlabMergeRequestUrl'),
             editBranchName: document.getElementById('editBranchName'),
             editCommitMessage: document.getElementById('editCommitMessage'),
             editStatus: document.getElementById('editStatus')
@@ -217,6 +218,7 @@ export class HistoryTab {
             <div class="bg-white border related border-gray-200 rounded-lg p-4 mb-4 relative" data-history-index="${realIndex}">
                 <div class="absolute bottom-1 right-0 left-0 flex justify-between w-full gap-2 px-6">
                     <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-gray-100 transition-all duration-300" data-edit-index="${realIndex}" title="Edit this item">✏️</button>
+                    <button class="bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-blue-100 transition-all duration-300" data-template-index="${realIndex}" title="Go to Templates">⏭️</button>
                     <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-red-100 transition-all duration-300" data-delete-index="${realIndex}">🗑️</button>
                 </div>
                 
@@ -321,6 +323,15 @@ export class HistoryTab {
             button.addEventListener('click', () => {
                 const index = parseInt(button.getAttribute('data-edit-index'));
                 this.openEditModal(index);
+            });
+        });
+
+        // Add click listeners to template buttons
+        const templateButtons = this.elements.historyContainer.querySelectorAll('button[data-template-index]');
+        templateButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const index = parseInt(button.getAttribute('data-template-index'));
+                this.goToTemplates(index);
             });
         });
 
@@ -436,6 +447,7 @@ export class HistoryTab {
         this.elements.editTaskTitle.value = item.taskTitle || '';
         this.elements.editTaskDescription.value = item.taskDescription || '';
         this.elements.editSourceUrl.value = item.sourceUrl || '';
+        this.elements.editGitlabMergeRequestUrl.value = item.gitlabMergeRequestUrl || '';
         this.elements.editBranchName.value = item.branchName || '';
         this.elements.editCommitMessage.value = item.commitMessage || '';
         this.elements.editStatus.value = item.status || 'in-progress';
@@ -472,6 +484,7 @@ export class HistoryTab {
         item.taskTitle = this.elements.editTaskTitle.value.trim();
         item.taskDescription = this.elements.editTaskDescription.value.trim();
         item.sourceUrl = this.elements.editSourceUrl.value.trim();
+        item.gitlabMergeRequestUrl = this.elements.editGitlabMergeRequestUrl.value.trim();
         item.branchName = this.elements.editBranchName.value.trim();
         item.commitMessage = this.elements.editCommitMessage.value.trim();
         item.status = this.elements.editStatus.value;
@@ -592,6 +605,31 @@ export class HistoryTab {
     hideAutoSearchIndicator() {
         if (this.elements.autoSearchIndicator) {
             this.elements.autoSearchIndicator.classList.add('hidden');
+        }
+    }
+
+    async goToTemplates(index) {
+        const data = await new Promise(resolve => {
+            chrome.storage.local.get(['history'], resolve);
+        });
+
+        const history = data.history || [];
+        const item = history[index];
+        
+        if (!item) return;
+
+        // Switch to templates tab and auto-fill with history data
+        const tabManager = window.application?.tabManager;
+        const templatesTab = window.application?.tabs?.templates;
+        
+        if (tabManager && templatesTab) {
+            tabManager.switchTab('templates');
+            
+            // Wait a bit for the tab to activate
+            setTimeout(() => {
+                templatesTab.autoFillFromHistory(item);
+                Utils.showNotification('Templates tab opened with data from history');
+            }, 100);
         }
     }
 }

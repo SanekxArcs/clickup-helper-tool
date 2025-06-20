@@ -2,6 +2,7 @@
 import { TabManager } from './shared/tab-manager.js';
 import { GenerateTab } from './tabs/generate/generate.js';
 import { HistoryTab } from './tabs/history/history.js';
+import { TemplatesTab } from './tabs/templates/templates.js';
 import { PomodoroTab } from './tabs/pomodoro/pomodoro.js';
 import { SettingsTab } from './tabs/settings/settings.js';
 import { Utils } from './shared/utils.js';
@@ -49,6 +50,7 @@ class Application {
         const tabContents = await Promise.all([
             this.loadTabHTML('generate'),
             this.loadTabHTML('history'), 
+            this.loadTabHTML('templates'),
             this.loadTabHTML('pomodoro'),
             this.loadTabHTML('settings')
         ]);
@@ -96,6 +98,10 @@ class Application {
         // Initialize History tab  
         this.tabs.history = new HistoryTab();
         this.tabManager.registerTab('history', this.tabs.history);
+
+        // Initialize Templates tab
+        this.tabs.templates = new TemplatesTab();
+        this.tabManager.registerTab('templates', this.tabs.templates);
 
         // Initialize Pomodoro tab
         this.tabs.pomodoro = new PomodoroTab();
@@ -199,4 +205,5 @@ class Application {
 }
 
 // Initialize the application
-new Application();
+const application = new Application();
+window.application = application;
