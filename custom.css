@@ -56,3 +56,49 @@ textarea,
 .edit-modal-content {
     -ms-overflow-style: none;
 }
+
+/* Rules Modal Styles */
+.rules-modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.rules-modal.hidden {
+    display: none;
+}
+
+.rules-modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+/* Ensure modal inputs have proper styling */
+.rules-modal-content input[type="text"],
+.rules-modal-content textarea {
+    color: #374151;
+}
+
+.rules-modal-content::-webkit-scrollbar {
+    display: none;
+}
+
+.rules-modal-content {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}

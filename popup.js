@@ -89,6 +89,30 @@
             clearHistoryBtn: document.getElementById('clearHistoryBtn'),
             historySearch: document.getElementById('historySearch'),
             
+            // Pomodoro tab
+            pomodoroDisplay: document.getElementById('pomodoroDisplay'),
+            pomodoroPhase: document.getElementById('pomodoroPhase'),
+            pomodoroProgress: document.getElementById('pomodoroProgress'),
+            pomodoroProgressBar: document.getElementById('pomodoroProgressBar'),
+            pomodoroStart: document.getElementById('pomodoroStart'),
+            pomodoroPause: document.getElementById('pomodoroPause'),
+            pomodoroReset: document.getElementById('pomodoroReset'),
+            pomodoroNext: document.getElementById('pomodoroNext'),
+            focusTime: document.getElementById('focusTime'),
+            shortBreak: document.getElementById('shortBreak'),
+            longBreak: document.getElementById('longBreak'),
+            sessionsUntilLongBreak: document.getElementById('sessionsUntilLongBreak'),
+            targetEndTime: document.getElementById('targetEndTime'),
+            calculateTime: document.getElementById('calculateTime'),
+            timeCalculation: document.getElementById('timeCalculation'),
+            templateName: document.getElementById('templateName'),
+            createTemplate: document.getElementById('createTemplate'),
+            loadTemplate: document.getElementById('loadTemplate'),
+            templateList: document.getElementById('templateList'),
+            sessionsCompleted: document.getElementById('sessionsCompleted'),
+            totalFocusTime: document.getElementById('totalFocusTime'),
+            dailyProgress: document.getElementById('dailyProgress'),
+            
             // Rules tab
             branchRules: document.getElementById('branchRules'),
             commitRules: document.getElementById('commitRules'),
@@ -156,6 +180,19 @@
             // Clear search when switching to history tab
             elements.historySearch.value = '';
             loadHistory();
+        }
+        
+        // Initialize Pomodoro timer when switching to pomodoro tab
+        if (tabName === 'pomodoro') {
+            if (!pomodoroTimer) {
+                pomodoroTimer = new PomodoroTimer();
+                window.pomodoroTimer = pomodoroTimer; // Make it globally accessible
+            }
+        }
+        
+        // Clean up Pomodoro timer when switching away from pomodoro tab
+        if (pomodoroTimer && tabName !== 'pomodoro') {
+            pomodoroTimer.stopPeriodicUpdates();
         }
         
         // Update rate limits display when switching to settings tab
@@ -1782,5 +1819,413 @@ Make sure to include both BRANCH: and COMMIT: labels in your response.`;
     }
 
     // Auto-search and caching functionality - END
+
+    // Pomodoro Timer functionality - START
+    class PomodoroTimer {
+        constructor() {
+            this.currentTime = 0;
+            this.totalTime = 0;
+            this.isRunning = false;
+            this.currentPhase = 'focus';
+            this.sessionsCompleted = 0;
+            this.totalFocusMinutes = 0;
+            this.dailyTemplates = [];
+            this.updateInterval = null;
+            
+            this.initializePomodoro();
+        }
+
+        initializePomodoro() {
+            this.loadPomodoroSettings();
+            this.loadPomodoroTemplates();
+            this.setupPomodoroEventListeners();
+            this.setupBackgroundMessageListener();
+            this.getTimerStateFromBackground();
+            this.startPeriodicUpdates();
+        }
+
+        setupBackgroundMessageListener() {
+            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+                if (request.type === 'POMODORO_STATE_UPDATE') {
+                    this.updateFromBackgroundState(request.state);
+                }
+            });
+        }
+
+        setupPomodoroEventListeners() {
+            elements.pomodoroStart.addEventListener('click', () => this.startTimer());
+            elements.pomodoroPause.addEventListener('click', () => this.pauseTimer());
+            elements.pomodoroReset.addEventListener('click', () => this.resetTimer());
+            elements.pomodoroNext.addEventListener('click', () => this.nextPhase());
+            
+            elements.calculateTime.addEventListener('click', () => this.calculateEndTime());
+            elements.createTemplate.addEventListener('click', () => this.createTemplate());
+            elements.loadTemplate.addEventListener('click', () => this.loadTemplate());
+            
+            // Save settings when changed
+            [elements.focusTime, elements.shortBreak, elements.longBreak, elements.sessionsUntilLongBreak].forEach(element => {
+                element.addEventListener('change', () => this.savePomodoroSettings());
+            });
+        }
+
+        startTimer() {
+            const settings = this.getSettings();
+            chrome.runtime.sendMessage({
+                type: 'POMODORO_START',
+                settings: settings
+            }, (response) => {
+                if (response && response.success) {
+                    this.updateFromBackgroundState(response.state);
+                }
+            });
+        }
+
+        pauseTimer() {
+            chrome.runtime.sendMessage({
+                type: 'POMODORO_PAUSE'
+            }, (response) => {
+                if (response && response.success) {
+                    this.updateFromBackgroundState(response.state);
+                }
+            });
+        }
+
+        resetTimer() {
+            chrome.runtime.sendMessage({
+                type: 'POMODORO_RESET'
+            }, (response) => {
+                if (response && response.success) {
+                    this.updateFromBackgroundState(response.state);
+                    this.setPhaseTime(); // Update display with current settings
+                    this.updateDisplay();
+                }
+            });
+        }
+
+        nextPhase() {
+            chrome.runtime.sendMessage({
+                type: 'POMODORO_NEXT'
+            }, (response) => {
+                if (response && response.success) {
+                    this.updateFromBackgroundState(response.state);
+                }
+            });
+        }
+
+        getTimerStateFromBackground() {
+            chrome.runtime.sendMessage({
+                type: 'POMODORO_GET_STATE'
+            }, (response) => {
+                if (response && response.state) {
+                    this.updateFromBackgroundState(response.state);
+                } else {
+                    // Initialize with default state
+                    this.setPhaseTime();
+                    this.updateDisplay();
+                    this.updateProgressDisplay();
+                }
+            });
+        }
+
+        updateFromBackgroundState(state) {
+            this.currentTime = state.currentTime || 0;
+            this.totalTime = state.totalTime || 0;
+            this.isRunning = state.isRunning || false;
+            this.currentPhase = state.currentPhase || 'focus';
+            this.sessionsCompleted = state.sessionsCompleted || 0;
+            this.totalFocusMinutes = state.totalFocusMinutes || 0;
+            
+            this.updateDisplay();
+            this.updateProgressDisplay();
+            this.updateControlButtons();
+        }
+
+        updateControlButtons() {
+            if (this.isRunning) {
+                elements.pomodoroStart.disabled = true;
+                elements.pomodoroPause.disabled = false;
+                elements.pomodoroStart.textContent = '▶️ Running...';
+            } else {
+                elements.pomodoroStart.disabled = false;
+                elements.pomodoroPause.disabled = true;
+                elements.pomodoroStart.textContent = this.currentTime > 0 && this.currentTime < this.totalTime ? '▶️ Resume' : '▶️ Start';
+            }
+        }
+
+        startPeriodicUpdates() {
+            // Get updates from background every second when popup is open
+            this.updateInterval = setInterval(() => {
+                this.getTimerStateFromBackground();
+            }, 1000);
+        }
+
+        stopPeriodicUpdates() {
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
+            }
+        }
+
+        getSettings() {
+            return {
+                focusTime: parseInt(elements.focusTime.value),
+                shortBreak: parseInt(elements.shortBreak.value),
+                longBreak: parseInt(elements.longBreak.value),
+                sessionsUntilLongBreak: parseInt(elements.sessionsUntilLongBreak.value)
+            };
+        }
+
+        setPhaseTime() {
+            const settings = this.getSettings();
+            let minutes;
+            switch (this.currentPhase) {
+                case 'focus':
+                    minutes = settings.focusTime;
+                    elements.pomodoroPhase.textContent = '🎯 Focus Session';
+                    elements.pomodoroProgressBar.className = 'bg-blue-500 h-2 rounded-full transition-all duration-1000';
+                    break;
+                case 'shortBreak':
+                    minutes = settings.shortBreak;
+                    elements.pomodoroPhase.textContent = '☕ Short Break';
+                    elements.pomodoroProgressBar.className = 'bg-green-500 h-2 rounded-full transition-all duration-1000';
+                    break;
+                case 'longBreak':
+                    minutes = settings.longBreak;
+                    elements.pomodoroPhase.textContent = '🌴 Long Break';
+                    elements.pomodoroProgressBar.className = 'bg-purple-500 h-2 rounded-full transition-all duration-1000';
+                    break;
+            }
+            this.currentTime = minutes * 60;
+            this.totalTime = minutes * 60;
+        }
+
+        updateDisplay() {
+            const minutes = Math.floor(this.currentTime / 60);
+            const seconds = this.currentTime % 60;
+            elements.pomodoroDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update progress bar
+            if (this.totalTime > 0) {
+                const progress = ((this.totalTime - this.currentTime) / this.totalTime) * 100;
+                elements.pomodoroProgressBar.style.width = `${progress}%`;
+            }
+            
+            // Update phase display
+            switch (this.currentPhase) {
+                case 'focus':
+                    elements.pomodoroPhase.textContent = '🎯 Focus Session';
+                    elements.pomodoroProgressBar.className = 'bg-blue-500 h-2 rounded-full transition-all duration-1000';
+                    break;
+                case 'shortBreak':
+                    elements.pomodoroPhase.textContent = '☕ Short Break';
+                    elements.pomodoroProgressBar.className = 'bg-green-500 h-2 rounded-full transition-all duration-1000';
+                    break;
+                case 'longBreak':
+                    elements.pomodoroPhase.textContent = '🌴 Long Break';
+                    elements.pomodoroProgressBar.className = 'bg-purple-500 h-2 rounded-full transition-all duration-1000';
+                    break;
+            }
+        }
+
+        updateProgressDisplay() {
+            elements.sessionsCompleted.textContent = this.sessionsCompleted;
+            const hours = Math.floor(this.totalFocusMinutes / 60);
+            const minutes = this.totalFocusMinutes % 60;
+            elements.totalFocusTime.textContent = `${hours}h ${minutes}m`;
+            
+            // Calculate daily progress (assuming 8 sessions as daily goal)
+            const dailyGoal = 8;
+            const progress = Math.min((this.sessionsCompleted / dailyGoal) * 100, 100);
+            elements.dailyProgress.style.width = `${progress}%`;
+        }
+
+        calculateEndTime() {
+            const targetTime = elements.targetEndTime.value;
+            if (!targetTime) {
+                elements.timeCalculation.textContent = 'Please select a target end time';
+                elements.timeCalculation.classList.remove('hidden');
+                return;
+            }
+
+            const now = new Date();
+            const target = new Date();
+            const [hours, minutes] = targetTime.split(':');
+            target.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            
+            if (target <= now) {
+                target.setDate(target.getDate() + 1); // Next day
+            }
+
+            const diffMinutes = Math.floor((target - now) / (1000 * 60));
+            
+            if (diffMinutes > 0) {
+                elements.focusTime.value = Math.max(1, Math.min(60, diffMinutes));
+                this.resetTimer();
+                elements.timeCalculation.textContent = `Set to ${diffMinutes} minutes to reach ${targetTime}`;
+            } else {
+                elements.timeCalculation.textContent = 'Invalid target time';
+            }
+            
+            elements.timeCalculation.classList.remove('hidden');
+            setTimeout(() => {
+                elements.timeCalculation.classList.add('hidden');
+            }, 5000);
+        }
+
+        createTemplate() {
+            const name = elements.templateName.value.trim();
+            if (!name) {
+                alert('Please enter a template name');
+                return;
+            }
+
+            const template = {
+                name: name,
+                focusTime: parseInt(elements.focusTime.value),
+                shortBreak: parseInt(elements.shortBreak.value),
+                longBreak: parseInt(elements.longBreak.value),
+                sessionsUntilLongBreak: parseInt(elements.sessionsUntilLongBreak.value),
+                message: `Template: ${name}`,
+                createdAt: new Date().toISOString()
+            };
+
+            this.dailyTemplates.push(template);
+            this.savePomodoroTemplates();
+            this.renderTemplateList();
+            elements.templateName.value = '';
+        }
+
+        loadTemplate() {
+            if (this.dailyTemplates.length === 0) {
+                alert('No templates available. Create one first!');
+                return;
+            }
+
+            // For simplicity, load the most recent template
+            const template = this.dailyTemplates[this.dailyTemplates.length - 1];
+            this.loadSpecificTemplate(this.dailyTemplates.length - 1);
+        }
+
+        renderTemplateList() {
+            elements.templateList.innerHTML = this.dailyTemplates.map((template, index) => `
+                <div class="flex justify-between items-center p-2 bg-white rounded border border-gray-200 mb-2">
+                    <div class="flex-1">
+                        <div class="font-medium text-sm">${template.name}</div>
+                        <div class="text-xs text-gray-500">${template.focusTime}m focus, ${template.shortBreak}m short, ${template.longBreak}m long</div>
+                    </div>
+                    <div class="flex gap-1">
+                        <button class="template-load-btn text-xs px-2 py-1 bg-blue-50 border border-blue-300 rounded hover:bg-blue-100" data-template-index="${index}">Load</button>
+                        <button class="template-delete-btn text-xs px-2 py-1 bg-red-50 border border-red-300 rounded hover:bg-red-100" data-template-index="${index}">×</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add event listeners to template buttons
+            this.setupTemplateButtonListeners();
+        }
+
+        setupTemplateButtonListeners() {
+            // Load template buttons
+            const loadButtons = elements.templateList.querySelectorAll('.template-load-btn');
+            loadButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = parseInt(e.target.getAttribute('data-template-index'));
+                    this.loadSpecificTemplate(index);
+                });
+            });
+
+            // Delete template buttons
+            const deleteButtons = elements.templateList.querySelectorAll('.template-delete-btn');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = parseInt(e.target.getAttribute('data-template-index'));
+                    this.deleteTemplate(index);
+                });
+            });
+        }
+
+        loadSpecificTemplate(index) {
+            const template = this.dailyTemplates[index];
+            if (template) {
+                elements.focusTime.value = template.focusTime;
+                elements.shortBreak.value = template.shortBreak;
+                elements.longBreak.value = template.longBreak;
+                elements.sessionsUntilLongBreak.value = template.sessionsUntilLongBreak;
+                
+                this.savePomodoroSettings();
+                this.resetTimer();
+                
+                // Update background with new settings
+                chrome.runtime.sendMessage({
+                    type: 'POMODORO_UPDATE_SETTINGS',
+                    settings: this.getSettings()
+                });
+            }
+        }
+
+        deleteTemplate(index) {
+            if (confirm('Delete this template?')) {
+                this.dailyTemplates.splice(index, 1);
+                this.savePomodoroTemplates();
+                this.renderTemplateList();
+            }
+        }
+
+        savePomodoroSettings() {
+            const settings = this.getSettings();
+            chrome.storage.local.set({ pomodoroSettings: settings });
+            
+            // Update background with new settings
+            chrome.runtime.sendMessage({
+                type: 'POMODORO_UPDATE_SETTINGS',
+                settings: settings
+            });
+        }
+
+        loadPomodoroSettings() {
+            chrome.storage.local.get(['pomodoroSettings'], (result) => {
+                if (result.pomodoroSettings) {
+                    const settings = result.pomodoroSettings;
+                    elements.focusTime.value = settings.focusTime || 25;
+                    elements.shortBreak.value = settings.shortBreak || 5;
+                    elements.longBreak.value = settings.longBreak || 15;
+                    elements.sessionsUntilLongBreak.value = settings.sessionsUntilLongBreak || 4;
+                }
+            });
+        }
+
+        savePomodoroTemplates() {
+            chrome.storage.local.set({ pomodoroTemplates: this.dailyTemplates });
+        }
+
+        loadPomodoroTemplates() {
+            chrome.storage.local.get(['pomodoroTemplates'], (result) => {
+                if (result.pomodoroTemplates) {
+                    this.dailyTemplates = result.pomodoroTemplates;
+                    this.renderTemplateList();
+                }
+            });
+        }
+
+        // Clean up when popup closes
+        destroy() {
+            this.stopPeriodicUpdates();
+        }
+    }
+
+    // Initialize Pomodoro timer when tab is accessed
+    let pomodoroTimer;
+    
+    // Make pomodoroTimer globally accessible for template management
+    window.pomodoroTimer = null;
+    
+    // Clean up when popup closes
+    window.addEventListener('beforeunload', () => {
+        if (pomodoroTimer) {
+            pomodoroTimer.destroy();
+        }
+    });
+
+    // Pomodoro Timer functionality - END
 
 })();

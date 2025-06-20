@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rules Modal Test</title>
+    <script src="./tailwind_css.js"></script>
+    <link rel="stylesheet" href="custom.css">
+</head>
+<body class="p-8 bg-gray-100">
+    <h1 class="text-2xl font-bold mb-4">Rules Modal Test</h1>
+    
+    <!-- Test button to open modal -->
+    <button id="testOpenModal" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        Open Rules Modal
+    </button>
+    
+    <!-- Include the rules modal HTML -->
+    <div id="rulesModal" class="rules-modal hidden fixed top-0 left-0 w-full h-full bg-black/50 z-[1000] backdrop-blur-sm">
+        <div class="rules-modal-content bg-white rounded-xl p-6 w-[600px] max-w-[90vw] max-h-[80vh] overflow-y-auto shadow-2xl modal-animation">
+            <div class="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-700 m-0">📋 Generation Rules</h3>
+                <button class="bg-transparent border-none text-2xl cursor-pointer text-gray-500 w-auto m-0 p-0 leading-none hover:text-red-500 hover:transform-none hover:shadow-none" id="rulesModalCloseBtn">&times;</button>
+            </div>
+            
+            <div class="mb-4">
+                <label for="branchRules" class="block mb-2 font-semibold text-gray-700">Branch Naming Rules:</label>
+                <textarea id="branchRules" placeholder="Enter your branch naming conventions and rules..." class="w-full p-3 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-32 resize-y"></textarea>
+                <div class="text-xs text-gray-500 mt-1">
+                    Define how branch names should be formatted, prefixes to use, and naming conventions.
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="commitRules" class="block mb-2 font-semibold text-gray-700">Commit Message Rules:</label>
+                <textarea id="commitRules" placeholder="Enter your commit message conventions and rules..." class="w-full p-3 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-32 resize-y"></textarea>
+                <div class="text-xs text-gray-500 mt-1">
+                    Specify commit message format, conventional commits structure, and any team-specific requirements.
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                <h4 class="text-sm font-semibold text-blue-700 mb-2">💡 Default Examples:</h4>
+                <div class="text-xs text-blue-600 space-y-1">
+                    <div><strong>Branch:</strong> feature/task-id-short-description, hotfix/urgent-fix-name</div>
+                    <div><strong>Commit:</strong> feat: add new feature, fix: resolve critical bug</div>
+                </div>
+                <button id="loadDefaultRulesBtn" class="mt-3 bg-blue-100 border border-blue-300 text-blue-700 px-3 py-1.5 rounded text-xs hover:bg-blue-200 transition-colors">
+                    📝 Load Default Rules
+                </button>
+            </div>
+            
+            <div class="flex gap-3 mt-5 pt-4 border-t border-gray-200">
+                <button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-4 py-3 rounded cursor-pointer text-sm font-medium flex-1 hover:bg-emerald-100 transition-all duration-300" id="saveRulesBtn">💾 Save Rules</button>
+                <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-4 py-3 rounded cursor-pointer text-sm font-medium flex-1 hover:bg-gray-100 transition-all duration-300" id="rulesModalCancelBtn">❌ Cancel</button>
+            </div>
+            
+            <div id="rulesSaved" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-3 hidden">
+                Rules saved successfully!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test script
+        const testButton = document.getElementById('testOpenModal');
+        const modal = document.getElementById('rulesModal');
+        const closeBtn = document.getElementById('rulesModalCloseBtn');
+        const cancelBtn = document.getElementById('rulesModalCancelBtn');
+        const saveBtn = document.getElementById('saveRulesBtn');
+        const loadDefaultBtn = document.getElementById('loadDefaultRulesBtn');
+        const branchRules = document.getElementById('branchRules');
+        const commitRules = document.getElementById('commitRules');
+        const savedMsg = document.getElementById('rulesSaved');
+
+        testButton.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+
+        closeBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+
+        loadDefaultBtn.addEventListener('click', () => {
+            branchRules.value = `Branch naming conventions:
+• Use lowercase with hyphens for separation
+• Include ticket/task ID when available
+• Format: {type}/{ticket-id}-{short-description}
+• Types: feature, bugfix, hotfix, chore, docs
+• Examples:
+  - feature/JIRA-123-user-authentication
+  - bugfix/GH-456-fix-login-error
+  - hotfix/urgent-security-patch
+  - chore/update-dependencies`;
+
+            commitRules.value = `Commit message conventions:
+• Follow conventional commits format
+• Format: {type}({scope}): {description}
+• Types: feat, fix, docs, style, refactor, test, chore
+• Keep first line under 50 characters
+• Use imperative mood ("add" not "added")
+• Examples:
+  - feat(auth): add user login validation
+  - fix(ui): resolve button styling issue
+  - docs: update API documentation
+  - refactor(utils): simplify date formatting
+  - test: add unit tests for user service`;
+        });
+
+        saveBtn.addEventListener('click', () => {
+            savedMsg.classList.remove('hidden');
+            setTimeout(() => {
+                savedMsg.classList.add('hidden');
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

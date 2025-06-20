@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="./tailwind_css.js"></script>
+    <script src="./tailwind.config.js"></script>
+    <link rel="stylesheet" href="custom.css">
+</head>
+<body class="w-[500px] p-5 font-sans bg-gradient-to-br from-blue-500 to-purple-600 text-white m-0">
+    <div class="bg-white/95 h-full rounded-xl p-5 text-gray-800 shadow-2xl">
+        
+        <!-- Tab Navigation -->
+        <div class="flex mb-5 bg-gray-50 gap-1 rounded-lg p-1">
+            <div class="tab flex-1 p-2.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium bg-blue-500 text-white" data-tab="generate">Generate</div>
+            <div class="tab flex-1 p-2.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="history">History</div>
+            <div class="tab flex-1 p-2.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="pomodoro">Pomodoro</div>
+            <div class="tab flex-1 p-2.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="settings">Settings</div>
+        </div>
+        
+        <!-- Tab Content Container -->
+        <div id="tab-content-container">
+            <!-- Tab content will be loaded here dynamically -->
+        </div>
+    </div>
+    
+    <!-- Edit History Item Modal -->
+    <div id="editModal" class="edit-modal hidden fixed top-0 left-0 w-full h-full bg-black/50 z-[1000] backdrop-blur-sm">
+        <div class="edit-modal-content bg-white rounded-xl p-6 w-[500px] max-w-[90vw] max-h-[80vh] overflow-y-auto shadow-2xl modal-animation">
+            <div class="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-700 m-0">✏️ Edit History Item</h3>
+                <button class="bg-transparent border-none text-2xl cursor-pointer text-gray-500 w-auto m-0 p-0 leading-none hover:text-red-500 hover:transform-none hover:shadow-none" id="editModalCloseBtn">&times;</button>
+            </div>
+            
+            <div class="mb-4">
+                <label for="editTaskId" class="block mb-2 font-semibold text-gray-700">Task ID:</label>
+                <input type="text" id="editTaskId" placeholder="e.g., WDEV-13729" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div class="mb-4">
+                <label for="editTaskTitle" class="block mb-2 font-semibold text-gray-700">Task Title:</label>
+                <input type="text" id="editTaskTitle" placeholder="Brief task description" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div class="mb-4">
+                <label for="editTaskDescription" class="block mb-2 font-semibold text-gray-700">Task Description:</label>
+                <textarea id="editTaskDescription" placeholder="Detailed task description" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-20 resize-y"></textarea>
+            </div>
+            
+            <div class="mb-4">
+                <label for="editSourceUrl" class="block mb-2 font-semibold text-gray-700">Source URL:</label>
+                <input type="url" id="editSourceUrl" placeholder="https://example.com/task-url" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div class="mb-4">
+                <label for="editBranchName" class="block mb-2 font-semibold text-gray-700">Branch Name:</label>
+                <input type="text" id="editBranchName" placeholder="feature/task-branch-name" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div class="mb-4">
+                <label for="editCommitMessage" class="block mb-2 font-semibold text-gray-700">Commit Message:</label>
+                <input type="text" id="editCommitMessage" placeholder="feat: implement new feature" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div class="flex gap-2.5 mt-5 pt-4 border-t border-gray-200">
+                <button class="bg-blue-50 ring-1 ring-blue-400 text-black  border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-blue-100 transition-all duration-300" id="editModalSaveBtn">💾 Save Changes</button>
+                <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-red-100 transition-all duration-300" id="editModalCancelBtn">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load the main application script -->
+    <script type="module" src="popup-main.js"></script>
+</body>
+</html>
