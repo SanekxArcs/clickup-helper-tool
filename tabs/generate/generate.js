@@ -98,6 +98,58 @@ function extractTaskDataFromPage() {
     return data;
 }
 
+// Function to extract GitLab merge request data from the current page
+function extractGitLabMergeRequestData() {
+    const data = { url: window.location.href };
+    
+    // Check if this is a GitLab merge request page
+    if (!data.url.includes('/-/merge_requests/')) {
+        return null;
+    }
+
+    // Extract task ID from branch name in the merge request description
+    const detailPageDescription = document.querySelector('.detail-page-description');
+    if (detailPageDescription) {
+        // Look for branch name links that contain task IDs
+        const branchLinks = detailPageDescription.querySelectorAll('a[title*="#WDEV"], a[title*="WDEV"]');
+        
+        for (const link of branchLinks) {
+            const branchName = link.getAttribute('title') || link.textContent.trim();
+            
+            // Extract WDEV task ID from branch name
+            const taskIdMatch = branchName.match(/(WDEV-\d+)/i);
+            if (taskIdMatch) {
+                data.taskId = taskIdMatch[1].toUpperCase();
+                data.branchName = branchName;
+                break;
+            }
+        }
+        
+        // Also try to extract from the description text directly
+        if (!data.taskId) {
+            const descriptionText = detailPageDescription.textContent;
+            const taskIdMatch = descriptionText.match(/(WDEV-\d+)/i);
+            if (taskIdMatch) {
+                data.taskId = taskIdMatch[1].toUpperCase();
+            }
+        }
+    }
+
+    // Extract merge request title
+    const titleElement = document.querySelector('.merge-request-title-text, .issuable-header-text h1');
+    if (titleElement) {
+        data.title = titleElement.textContent.trim();
+    }
+
+    // Extract author info
+    const authorElement = document.querySelector('.author-link .author');
+    if (authorElement) {
+        data.author = authorElement.textContent.trim();
+    }
+
+    return data.taskId ? data : null; // Only return data if we found a task ID
+}
+
 export class GenerateTab {
     constructor() {
         this.elements = {};
@@ -525,11 +577,158 @@ Return ONLY in this exact JSON format:
             this.elements.taskPriority.value = data.lastFormData.taskPriority || 'Normal';
             this.updatePriorityIndicator();
         }
+    }    async autoSearchFromCurrentPage() {
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (!tab) {
+                return;
+            }
+
+            // Check if this is a GitLab merge request page
+            if (tab.url.includes('/-/merge_requests/')) {
+                console.log('Detected GitLab merge request page, searching for task data...');
+
+                const result = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    function: extractGitLabMergeRequestData
+                });
+
+                if (result && result[0] && result[0].result) {
+                    const gitlabData = result[0].result;
+                    
+                    if (gitlabData.taskId) {
+                        // First, auto-fill the form with GitLab data
+                        await this.autoFillFromGitLab(gitlabData);
+                        
+                        // Then, process and update history
+                        await this.processGitLabTaskData(gitlabData);
+                    }
+                }
+            } else {
+                // Try ClickUp auto-fill for other pages
+                console.log('Attempting ClickUp auto-fill from tab:', tab.url);
+                
+                const result = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    function: extractTaskDataFromPage
+                });
+
+                if (result && result[0] && result[0].result) {
+                    const data = result[0].result;
+                    if (data && (data.id || data.title || data.description)) {
+                        this.fillFormWithData(data);
+                        Utils.showNotification('Auto-filled from ClickUp!', 'success');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Auto-search error:', error);
+            // Fail silently for auto-search
+        }
     }
 
-    async autoSearchFromCurrentPage() {
-        // Auto-search functionality would go here
-        // This is a simplified version
+    async autoFillFromGitLab(gitlabData) {
+        // Check if we have a matching history item to get more details
+        const data = await Utils.getStorageData(['history']);
+        const history = data.history || [];
+        
+        const matchingItem = history.find(item => 
+            item.taskId && item.taskId.toUpperCase() === gitlabData.taskId.toUpperCase()
+        );
+
+        // Fill form with available data
+        if (gitlabData.taskId) {
+            this.elements.taskId.value = gitlabData.taskId;
+        }
+
+        // If we have a matching history item, use its data for better auto-fill
+        if (matchingItem) {
+            if (matchingItem.taskTitle) {
+                this.elements.taskTitle.value = matchingItem.taskTitle;
+            }
+            if (matchingItem.taskDescription) {
+                this.elements.taskDescription.value = matchingItem.taskDescription;
+            }
+            if (matchingItem.taskPriority) {
+                this.elements.taskPriority.value = matchingItem.taskPriority;
+                this.showPriorityIndicator(`Auto-detected priority from history: ${matchingItem.taskPriority}`);
+            }
+        } else {
+            // If no history match, use GitLab data
+            if (gitlabData.title) {
+                // Extract a cleaner task title from the GitLab MR title
+                const cleanTitle = gitlabData.title.replace(/^(feat|fix|chore|docs|style|refactor|test):\s*/i, '');
+                this.elements.taskTitle.value = cleanTitle;
+            }
+        }
+
+        this.updatePriorityIndicator();
+        this.autoSave();
+
+        // Show notification about auto-fill
+        const source = matchingItem ? 'history and GitLab' : 'GitLab';
+        Utils.showNotification(`Auto-filled from ${source} for task ${gitlabData.taskId}`, 'success');
+    }
+
+    async processGitLabTaskData(gitlabData) {
+        // Get existing history
+        const data = await Utils.getStorageData(['history']);
+        const history = data.history || [];
+        
+        // Find matching history item by task ID
+        const matchingItemIndex = history.findIndex(item => 
+            item.taskId && item.taskId.toUpperCase() === gitlabData.taskId.toUpperCase()
+        );
+
+        if (matchingItemIndex === -1) {
+            // No matching history item found
+            console.log('No matching history item found for task ID:', gitlabData.taskId);
+            return;
+        }
+
+        const historyItem = history[matchingItemIndex];
+        let updated = false;
+        let updateMessage = '';
+
+        // Check if GitLab link already exists and is the same
+        if (historyItem.gitlabUrl === gitlabData.url) {
+            console.log('GitLab link already stored for this item');
+            return; // Do nothing if the same GitLab link is already stored
+        }
+
+        // Update GitLab URL if not present or different
+        if (!historyItem.gitlabUrl) {
+            historyItem.gitlabUrl = gitlabData.url;
+            updateMessage = '🔗 GitLab link stored for task ' + gitlabData.taskId;
+            updated = true;
+        } else if (historyItem.gitlabUrl !== gitlabData.url) {
+            historyItem.gitlabUrl = gitlabData.url;
+            updateMessage = '🔗 GitLab link updated for task ' + gitlabData.taskId;
+            updated = true;
+        }
+
+        // Check if branch name is different and update it
+        if (gitlabData.branchName && historyItem.branchName !== gitlabData.branchName) {
+            historyItem.branchName = gitlabData.branchName;
+            if (updateMessage) {
+                updateMessage += ' and branch name updated';
+            } else {
+                updateMessage = '🌿 Branch name updated from GitLab for task ' + gitlabData.taskId;
+            }
+            updated = true;
+        }
+
+        if (updated) {
+            // Mark as updated
+            historyItem.lastUpdated = Date.now();
+            historyItem.updatedFromGitLab = true;
+            
+            // Save updated history
+            await Utils.setStorageData({ history });
+            Utils.showNotification(updateMessage, 'success');
+            console.log('Updated history item from GitLab:', historyItem);
+        }
     }
 
     async checkRateLimit() {
