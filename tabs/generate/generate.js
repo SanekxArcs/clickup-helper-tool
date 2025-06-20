@@ -727,9 +727,7 @@ Return ONLY in this exact JSON format:
         // Show notification about auto-fill
         const source = matchingItem ? 'history and GitLab' : 'GitLab';
         Utils.showNotification(`Auto-filled from ${source} for task ${gitlabData.taskId}`, 'success');
-    }
-
-    async processGitLabTaskData(gitlabData) {
+    }    async processGitLabTaskData(gitlabData) {
         // Get existing history
         const data = await Utils.getStorageData(['history']);
         const history = data.history || [];
@@ -747,34 +745,37 @@ Return ONLY in this exact JSON format:
 
         const historyItem = history[matchingItemIndex];
         let updated = false;
-        let updateMessage = '';
+        let updateMessages = [];
 
-        // Check if GitLab link already exists and is the same
-        if (historyItem.gitlabUrl === gitlabData.url) {
-            console.log('GitLab link already stored for this item');
-            return; // Do nothing if the same GitLab link is already stored
-        }
-
-        // Update GitLab URL if not present or different
-        if (!historyItem.gitlabUrl) {
-            historyItem.gitlabUrl = gitlabData.url;
-            updateMessage = '🔗 GitLab link stored for task ' + gitlabData.taskId;
+        // Update GitLab Merge Request URL if not present or different
+        if (!historyItem.gitlabMergeRequestUrl) {
+            historyItem.gitlabMergeRequestUrl = gitlabData.url;
+            updateMessages.push('🔗 GitLab merge request URL added');
             updated = true;
-        } else if (historyItem.gitlabUrl !== gitlabData.url) {
-            historyItem.gitlabUrl = gitlabData.url;
-            updateMessage = '🔗 GitLab link updated for task ' + gitlabData.taskId;
+        } else if (historyItem.gitlabMergeRequestUrl !== gitlabData.url) {
+            historyItem.gitlabMergeRequestUrl = gitlabData.url;
+            updateMessages.push('🔗 GitLab merge request URL updated');
             updated = true;
-        }
-
-        // Check if branch name is different and update it
-        if (gitlabData.branchName && historyItem.branchName !== gitlabData.branchName) {
-            historyItem.branchName = gitlabData.branchName;
-            if (updateMessage) {
-                updateMessage += ' and branch name updated';
+        }        // Compare and update branch name if different
+        if (gitlabData.branchName) {
+            if (!historyItem.branchName) {
+                // No branch name in history, add it from GitLab
+                historyItem.branchName = gitlabData.branchName;
+                updateMessages.push('🌿 Branch name added from GitLab');
+                updated = true;
+                console.log(`Added branch name from GitLab: "${gitlabData.branchName}"`);
+            } else if (historyItem.branchName !== gitlabData.branchName) {
+                // Branch names are different, update with the one from GitLab page
+                console.log(`Branch name difference detected:`);
+                console.log(`  - History has: "${historyItem.branchName}"`);
+                console.log(`  - GitLab page has: "${gitlabData.branchName}"`);
+                console.log(`  - Updating to GitLab version`);
+                historyItem.branchName = gitlabData.branchName;
+                updateMessages.push('🌿 Branch name updated from GitLab page');
+                updated = true;
             } else {
-                updateMessage = '🌿 Branch name updated from GitLab for task ' + gitlabData.taskId;
+                console.log(`Branch names match: "${historyItem.branchName}"`);
             }
-            updated = true;
         }
 
         if (updated) {
@@ -784,8 +785,12 @@ Return ONLY in this exact JSON format:
             
             // Save updated history
             await Utils.setStorageData({ history });
-            Utils.showNotification(updateMessage, 'success');
+            
+            const updateMessage = updateMessages.join(' and ');
+            Utils.showNotification(`${updateMessage} for task ${gitlabData.taskId}`, 'success');
             console.log('Updated history item from GitLab:', historyItem);
+        } else {
+            console.log('No updates needed for GitLab data - everything matches');
         }
     }
 

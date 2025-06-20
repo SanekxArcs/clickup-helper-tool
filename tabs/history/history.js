@@ -245,13 +245,21 @@ export class HistoryTab {
                                 </button>
                             </div>
                         </div>` : ''}
-                    
-                    ${item.commitMessage ? `
+                      ${item.commitMessage ? `
                         <div class="flex flex-col">
                             <strong>Commit:</strong>
                             <div class="text-primary-dark flex flex-row gap-1 items-center">
                                 <div class="select-all cursor-text bg-blue-50 py-1.5 px-2 rounded border border-gray-200 font-mono break-all transition-all duration-300 hover:bg-blue-100 hover:border-gray-300 text-balance" title="Click to select all">${Utils.escapeHtml(item.commitMessage)}</div> 
                                 <button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-emerald-100 h-auto transition-all duration-300" data-copy-text="${Utils.escapeAttr(item.commitMessage)}">📋</button>
+                            </div>
+                        </div>` : ''}
+                    
+                    ${item.gitlabMergeRequestUrl ? `
+                        <div class="flex flex-col">
+                            <strong>GitLab MR:</strong>
+                            <div class="text-primary-dark flex flex-row gap-1 items-center">
+                                <a href="${Utils.escapeHtml(item.gitlabMergeRequestUrl)}" target="_blank" class="select-all cursor-pointer bg-purple-50 py-1.5 px-2 rounded border border-gray-200 font-mono break-all transition-all duration-300 hover:bg-purple-100 hover:border-gray-300 text-balance no-underline hover:underline" title="Open GitLab merge request">${Utils.escapeHtml(item.gitlabMergeRequestUrl)}</a>
+                                <button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-emerald-100 h-auto transition-all duration-300" data-copy-text="${Utils.escapeAttr(item.gitlabMergeRequestUrl)}">📋</button>
                             </div>
                         </div>` : ''}
                     
