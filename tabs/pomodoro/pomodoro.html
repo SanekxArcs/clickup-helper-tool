@@ -84,8 +84,8 @@
     <div class="text-center mb-6">
         <div id="currentTime" class="text-sm text-gray-600 mb-2"></div>
         <div id="workDayStatus" class="text-sm font-medium mb-4"></div>
-        <div id="timerDisplay" class="text-6xl font-bold text-blue-600 mb-2">25:00</div>
-        <div id="timerPhase" class="text-xl font-semibold text-gray-700 mb-2">Ready to Work</div>
+        <div id="timerDisplay" class="text-6xl font-bold text-blue-600 mb-2">00:00</div>
+        <div id="timerPhase" class="text-xl font-semibold text-gray-700 mb-2">🌅 Ready to Start Day</div>
         <div id="timerProgress" class="w-full bg-gray-200 rounded-full h-3 mb-4">
             <div id="timerProgressBar" class="bg-blue-500 h-3 rounded-full transition-all duration-1000" style="width: 0%"></div>
         </div>
@@ -106,6 +106,12 @@
         <button id="settingsBtn" class="bg-gray-50 ring-2 ring-gray-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-gray-100 transition-all">
             ⚙️ Settings
         </button>
+    </div>
+    
+    <!-- Debug Info -->
+    <div class="bg-yellow-50 p-2 rounded text-xs mb-4">
+        <button id="debugRefresh" class="text-blue-600 underline">🔄 Force Refresh UI</button>
+        <div id="debugInfo" class="mt-1 text-gray-600"></div>
     </div>
     
     <!-- Today's Statistics -->

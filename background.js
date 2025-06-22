@@ -305,6 +305,7 @@ class AdvancedPomodoroTimer {
         if (this.isRunning) {
             this.isRunning = false;
             clearInterval(this.timer);
+            this.timer = null;
             this.saveTimerState();
             this.notifyPopup();
         }
@@ -313,6 +314,7 @@ class AdvancedPomodoroTimer {
     timerComplete() {
         this.isRunning = false;
         clearInterval(this.timer);
+        this.timer = null;
         
         // Show notification based on phase
         this.showPhaseCompleteNotification();
@@ -347,11 +349,22 @@ class AdvancedPomodoroTimer {
         chrome.storage.local.get(['advancedPomodoroTimerState'], (result) => {
             if (result.advancedPomodoroTimerState) {
                 const state = result.advancedPomodoroTimerState;
+                console.log('Loading timer state from storage:', state);
+                
                 this.currentTime = state.currentTime || 0;
                 this.totalTime = state.totalTime || 0;
                 this.isRunning = state.isRunning || false;
                 this.currentPhase = state.currentPhase || 'work';
                 this.startTime = state.startTime;
+                
+                console.log('Timer state loaded:', {
+                    currentTime: this.currentTime,
+                    totalTime: this.totalTime,
+                    isRunning: this.isRunning,
+                    currentPhase: this.currentPhase
+                });
+            } else {
+                console.log('No timer state found in storage');
             }
         });
     }
@@ -359,32 +372,50 @@ class AdvancedPomodoroTimer {
     resumeTimerIfNeeded() {
         setTimeout(() => {
             chrome.storage.local.get(['advancedPomodoroTimerState'], (result) => {
+                console.log('Checking if timer should be resumed...', result);
+                
                 if (result.advancedPomodoroTimerState && result.advancedPomodoroTimerState.isRunning) {
                     const state = result.advancedPomodoroTimerState;
                     const elapsed = Math.floor((Date.now() - state.lastSaved) / 1000);
                     
+                    console.log('Timer was running, elapsed time:', elapsed, 'seconds');
+                    console.log('Original currentTime:', state.currentTime);
+                    
                     if (elapsed < state.currentTime) {
                         // Timer should still be running
-                        this.currentTime = state.currentTime - elapsed;
+                        this.currentTime = Math.max(0, state.currentTime - elapsed);
                         this.totalTime = state.totalTime;
                         this.currentPhase = state.currentPhase;
                         this.startTime = state.startTime;
                         
-                        // Resume timer
-                        this.isRunning = true;
-                        this.timer = setInterval(() => {
-                            this.currentTime--;
-                            this.saveTimerState();
-                            this.notifyPopup();
+                        console.log('Resuming timer with currentTime:', this.currentTime);
+                        
+                        if (this.currentTime > 0) {
+                            // Resume timer
+                            this.isRunning = true;
+                            this.timer = setInterval(() => {
+                                this.currentTime--;
+                                this.saveTimerState();
+                                this.notifyPopup();
+                                
+                                if (this.currentTime <= 0) {
+                                    this.timerComplete();
+                                }
+                            }, 1000);
                             
-                            if (this.currentTime <= 0) {
-                                this.timerComplete();
-                            }
-                        }, 1000);
+                            console.log('Timer resumed successfully');
+                        } else {
+                            // Timer should have completed
+                            console.log('Timer should have completed, triggering completion');
+                            this.timerComplete();
+                        }
                     } else {
                         // Timer should have completed while extension was closed
+                        console.log('Timer completed while extension was closed');
                         this.timerComplete();
                     }
+                } else {
+                    console.log('No running timer to resume');
                 }
             });
         }, 500);
