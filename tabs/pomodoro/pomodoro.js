@@ -22,11 +22,18 @@ export class PomodoroTab {
         
         // Statistics
         this.todayStats = {
-            workTime: 0,
-            breakTime: 0,
-            lunchTime: 0,
+            workTime: 0, // in seconds
+            breakTime: 0, // in seconds
+            lunchTime: 0, // in seconds
             sessions: 0,
             date: new Date().toDateString()
+        };
+        
+        // Lunch budget tracking
+        this.lunchBudget = {
+            totalMinutes: 0, // calculated from settings
+            usedMinutes: 0,  // total lunch time used today
+            remainingMinutes: 0 // available lunch time
         };
         
         // Settings
@@ -147,7 +154,7 @@ export class PomodoroTab {
         // Control buttons - using once to prevent duplicates
         this.elements.startDayBtn.addEventListener('click', () => this.startWorkDay(), { once: false });
         this.elements.startLunchBtn.addEventListener('click', () => this.startLunch(), { once: false });
-        this.elements.endWorkBtn.addEventListener('click', () => this.endWorkDay(), { once: false });
+        this.elements.endWorkBtn.addEventListener('click', async () => await this.endWorkDay(), { once: false });
         this.elements.settingsBtn.addEventListener('click', () => this.openSettings(), { once: false });
         
         // Mark buttons as having listeners
@@ -210,6 +217,14 @@ export class PomodoroTab {
 
     startLunch() {
         if (this.isWorkDayActive && !this.isLunchActive) {
+            // Check lunch budget
+            this.calculateLunchBudget();
+            
+            if (this.lunchBudget.remainingMinutes <= 0) {
+                Utils.showNotification('No lunch time remaining! You have used your full lunch budget for today. 🍽️', 'warning');
+                return;
+            }
+            
             this.isLunchActive = true;
             this.lunchStartTime = new Date();
             this.pauseCurrentTimer();
@@ -232,7 +247,7 @@ export class PomodoroTab {
             this.updateButtons();
             this.updateWorkDayStatus();
             this.saveWorkDayState();
-            Utils.showNotification('Lunch break started! Enjoy your meal! 🍽️', 'success');
+            Utils.showNotification(`Lunch break started! You have ${this.lunchBudget.remainingMinutes} minutes available. Enjoy your meal! 🍽️`, 'success');
         }
     }
 
@@ -240,35 +255,91 @@ export class PomodoroTab {
         if (this.isLunchActive) {
             this.isLunchActive = false;
             this.lunchEndTime = new Date();
-            const lunchDuration = Math.floor((this.lunchEndTime - this.lunchStartTime) / 60000);
-            this.todayStats.lunchTime += lunchDuration;
+            
+            // Calculate actual lunch duration from start time to now in seconds
+            const actualLunchDuration = Math.floor((this.lunchEndTime - this.lunchStartTime) / 1000); // in seconds
+            this.todayStats.lunchTime += actualLunchDuration;
+            
+            // Recalculate lunch budget
+            this.calculateLunchBudget();
+            
+            console.log('Ending lunch:', {
+                lunchStartTime: this.lunchStartTime,
+                lunchEndTime: this.lunchEndTime,
+                actualDuration: actualLunchDuration,
+                timerCurrentTime: this.currentTime,
+                lunchBudget: this.lunchBudget
+            });
+            
+            // Stop the lunch timer
+            chrome.runtime.sendMessage({
+                type: 'ADVANCED_POMODORO_PAUSE'
+            });
+            
+            // Reset to work phase
             this.currentPhase = 'work';
             this.startWorkTimer();
+            
             this.updateButtons();
             this.updateWorkDayStatus();
+            this.updateStatistics();
             this.saveStats();
-            Utils.showNotification('Back to work! Let\'s be productive! 🚀', 'success');
+            this.saveWorkDayState();
+            
+            const durationMinutes = Math.floor(actualLunchDuration / 60);
+            const durationSeconds = actualLunchDuration % 60;
+            
+            // Show different messages based on budget status
+            if (this.lunchBudget.remainingMinutes <= 0) {
+                Utils.showNotification(`Back to work! Lunch was ${durationMinutes}m ${durationSeconds}s. You have used your full lunch budget for today! 🚀`, 'warning');
+            } else {
+                Utils.showNotification(`Back to work! Lunch was ${durationMinutes}m ${durationSeconds}s. ${this.lunchBudget.remainingMinutes} minutes remaining. Let's be productive! 🚀`, 'success');
+            }
         }
     }
 
-    endWorkDay() {
+    async endWorkDay() {
         if (this.isWorkDayActive) {
             this.isWorkDayActive = false;
             this.workDayEndTime = new Date();
+            
+            console.log('Ending work day:', {
+                startTime: this.workDayStartTime,
+                endTime: this.workDayEndTime,
+                currentStats: this.todayStats,
+                currentPhase: this.currentPhase,
+                isRunning: this.isRunning,
+                currentTime: this.currentTime,
+                totalTime: this.totalTime
+            });
+            
+            // Add any partial work session time
+            const currentWorkProgress = this.calculateCurrentWorkProgress();
+            if (currentWorkProgress > 0) {
+                this.todayStats.workTime += currentWorkProgress;
+                console.log('Added', currentWorkProgress, 'seconds from current work session');
+            }
             
             if (this.isLunchActive) {
                 this.endLunch();
             }
             
             this.pauseCurrentTimer();
-            this.saveWorkDayToHistory();
+            
+            console.log('Final work day stats before saving:', this.todayStats);
+            
+            // Save final stats before creating history
+            await this.saveStats();
+            await this.saveWorkDayToHistory();
             this.resetDayState();
             this.updateButtons();
             this.updateWorkDayStatus();
+            this.updateStatistics();
             
-            const totalWorkHours = Math.floor(this.todayStats.workTime / 60);
-            const totalWorkMinutes = this.todayStats.workTime % 60;
-            Utils.showNotification(`Work day ended! Total work time: ${totalWorkHours}h ${totalWorkMinutes}m 🎉`, 'success');
+            const totalWorkHours = Math.floor(this.todayStats.workTime / 3600);
+            const totalWorkMinutes = Math.floor((this.todayStats.workTime % 3600) / 60);
+            const totalWorkSeconds = this.todayStats.workTime % 60;
+            Utils.showNotification(`Work day ended! Total work time: ${totalWorkHours}h ${totalWorkMinutes}m ${totalWorkSeconds}s 🎉`, 'success');
         }
     }
 
@@ -324,9 +395,15 @@ export class PomodoroTab {
     onTimerComplete() {
         this.isRunning = false;
         
+        console.log('Timer completed for phase:', this.currentPhase);
+        
         if (this.currentPhase === 'work') {
-            this.todayStats.workTime += this.settings.workTimeMinutes;
+            // Add completed work session to stats (convert minutes to seconds)
+            const workTimeSeconds = this.settings.workTimeMinutes * 60;
+            this.todayStats.workTime += workTimeSeconds;
             this.todayStats.sessions++;
+            console.log('Work session completed, added', workTimeSeconds, 'seconds to stats');
+            
             this.currentPhase = 'break';
             this.currentTime = this.settings.breakTimeMinutes * 60;
             this.totalTime = this.currentTime;
@@ -338,7 +415,11 @@ export class PomodoroTab {
             }, 2000);
             
         } else if (this.currentPhase === 'break') {
-            this.todayStats.breakTime += this.settings.breakTimeMinutes;
+            // Add completed break session to stats (convert minutes to seconds)
+            const breakTimeSeconds = this.settings.breakTimeMinutes * 60;
+            this.todayStats.breakTime += breakTimeSeconds;
+            console.log('Break session completed, added', breakTimeSeconds, 'seconds to stats');
+            
             this.currentPhase = 'work';
             this.currentTime = this.settings.workTimeMinutes * 60;
             this.totalTime = this.currentTime;
@@ -355,6 +436,7 @@ export class PomodoroTab {
         this.saveStats();
         this.updateStatistics();
         this.updateDisplay();
+        this.saveWorkDayState();
     }
 
     getTimerStateFromBackground() {
@@ -490,7 +572,7 @@ export class PomodoroTab {
         }
         
         if (this.elements.endWorkBtn && !this.elements.endWorkBtn.hasAttribute('data-listener-active')) {
-            this.elements.endWorkBtn.addEventListener('click', () => this.endWorkDay());
+            this.elements.endWorkBtn.addEventListener('click', async () => await this.endWorkDay());
             this.elements.endWorkBtn.setAttribute('data-listener-active', 'true');
         }
         
@@ -511,8 +593,18 @@ export class PomodoroTab {
 
     updateDisplay() {
         // Update timer display
-        const minutes = Math.floor(Math.max(0, this.currentTime) / 60);
-        const seconds = Math.max(0, this.currentTime) % 60;
+        let minutes, seconds;
+        
+        if (this.currentPhase === 'lunch') {
+            // For lunch, show time elapsed (counting up)
+            minutes = Math.floor(Math.max(0, this.currentTime) / 60);
+            seconds = Math.max(0, this.currentTime) % 60;
+        } else {
+            // For work/break, show time remaining (counting down)
+            minutes = Math.floor(Math.max(0, this.currentTime) / 60);
+            seconds = Math.max(0, this.currentTime) % 60;
+        }
+        
         this.elements.timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         
         // Update phase display
@@ -529,7 +621,7 @@ export class PomodoroTab {
                 progressColor = 'bg-green-500';
                 break;
             case 'lunch':
-                phaseText = '🍽️ Lunch Break';
+                phaseText = this.isRunning ? '🍽️ Lunch Break (time elapsed)' : '🍽️ Lunch Break';
                 progressColor = 'bg-orange-500';
                 break;
         }
@@ -541,15 +633,22 @@ export class PomodoroTab {
         if (this.totalTime > 0 && this.currentPhase !== 'lunch') {
             const progress = ((this.totalTime - this.currentTime) / this.totalTime) * 100;
             this.elements.timerProgressBar.style.width = `${Math.max(0, progress)}%`;
+        } else if (this.currentPhase === 'lunch') {
+            // For lunch, show a pulsing animation instead of progress
+            this.elements.timerProgressBar.style.width = '100%';
+            this.elements.timerProgressBar.style.animation = 'pulse 2s infinite';
         } else {
             this.elements.timerProgressBar.style.width = '0%';
+            this.elements.timerProgressBar.style.animation = 'none';
         }
         
         // Update next phase info
-        if (this.isRunning && this.isWorkDayActive) {
+        if (this.isRunning && this.isWorkDayActive && this.currentPhase !== 'lunch') {
             const nextPhase = this.currentPhase === 'work' ? 'break' : 'work';
             const nextDuration = nextPhase === 'work' ? this.settings.workTimeMinutes : this.settings.breakTimeMinutes;
             this.elements.nextPhaseInfo.textContent = `Next: ${nextDuration}min ${nextPhase}`;
+        } else if (this.currentPhase === 'lunch') {
+            this.elements.nextPhaseInfo.textContent = 'Click "End Lunch" when ready to continue working';
         } else {
             this.elements.nextPhaseInfo.textContent = '';
         }
@@ -580,14 +679,21 @@ export class PomodoroTab {
     }
 
     updateButtons() {
+        // Calculate lunch budget first
+        this.calculateLunchBudget();
+        
         // Ensure buttons are enabled/disabled correctly
         this.elements.startDayBtn.disabled = this.isWorkDayActive;
-        this.elements.startLunchBtn.disabled = !this.isWorkDayActive || this.isLunchActive;
+        
+        // Lunch button logic with budget
+        const canStartLunch = this.isWorkDayActive && !this.isLunchActive && this.lunchBudget.remainingMinutes > 0;
+        this.elements.startLunchBtn.disabled = !canStartLunch && !this.isLunchActive;
+        
         this.elements.endWorkBtn.disabled = !this.isWorkDayActive;
         
         // Set onclick handlers directly as backup
         this.elements.startDayBtn.onclick = () => this.startWorkDay();
-        this.elements.endWorkBtn.onclick = () => this.endWorkDay();
+        this.elements.endWorkBtn.onclick = async () => await this.endWorkDay();
         
         // Make sure buttons are clickable when enabled
         if (!this.elements.startDayBtn.disabled) {
@@ -604,15 +710,34 @@ export class PomodoroTab {
             this.elements.endWorkBtn.style.opacity = '0.5';
         }
         
-        // Update lunch button text and functionality
+        // Update lunch button text and functionality with budget display
         if (this.isLunchActive) {
-            this.elements.startLunchBtn.textContent = '🔄 End Lunch';
+            // During lunch, show remaining minutes counting down
+            const currentLunchMinutes = Math.floor((Date.now() - this.lunchStartTime) / 60000);
+            const remainingLunchMinutes = Math.max(0, this.lunchBudget.remainingMinutes - currentLunchMinutes);
+            
+            this.elements.startLunchBtn.textContent = `🔄 End Lunch (${remainingLunchMinutes})`;
             this.elements.startLunchBtn.disabled = false;
             this.elements.startLunchBtn.style.pointerEvents = 'auto';
             this.elements.startLunchBtn.style.opacity = '1';
             this.elements.startLunchBtn.onclick = () => this.endLunch();
+            
+            // Change color if over budget
+            if (remainingLunchMinutes <= 0) {
+                this.elements.startLunchBtn.className = 'bg-red-50 ring-2 ring-red-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-red-100 transition-all';
+            } else {
+                this.elements.startLunchBtn.className = 'bg-orange-50 ring-2 ring-orange-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-orange-100 transition-all';
+            }
         } else {
-            this.elements.startLunchBtn.textContent = '🍽️ Start Lunch';
+            // Not on lunch, show available minutes
+            if (this.lunchBudget.remainingMinutes > 0) {
+                this.elements.startLunchBtn.textContent = `🍽️ Start Lunch (${this.lunchBudget.remainingMinutes})`;
+                this.elements.startLunchBtn.className = 'bg-orange-50 ring-2 ring-orange-400 text-black px-4 py-3 rounded-lg font-medium hover:bg-orange-100 transition-all';
+            } else {
+                this.elements.startLunchBtn.textContent = `🍽️ Lunch Used (0)`;
+                this.elements.startLunchBtn.className = 'bg-gray-50 ring-2 ring-gray-400 text-gray-500 px-4 py-3 rounded-lg font-medium cursor-not-allowed';
+            }
+            
             if (!this.elements.startLunchBtn.disabled) {
                 this.elements.startLunchBtn.style.pointerEvents = 'auto';
                 this.elements.startLunchBtn.style.opacity = '1';
@@ -624,32 +749,69 @@ export class PomodoroTab {
         
         console.log('Buttons updated:', {
             startDay: { disabled: this.elements.startDayBtn.disabled, workDayActive: this.isWorkDayActive },
-            lunch: { disabled: this.elements.startLunchBtn.disabled, lunchActive: this.isLunchActive },
+            lunch: { disabled: this.elements.startLunchBtn.disabled, lunchActive: this.isLunchActive, remainingMinutes: this.lunchBudget.remainingMinutes },
             endWork: { disabled: this.elements.endWorkBtn.disabled }
         });
     }
 
     updateStatistics() {
-        // Update today's statistics
-        const workHours = Math.floor(this.todayStats.workTime / 60);
-        const workMinutes = this.todayStats.workTime % 60;
-        this.elements.todayWorkTime.textContent = `${workHours}:${workMinutes.toString().padStart(2, '0')}`;
+        // Update today's statistics with seconds (all stats are now in seconds)
+        const workHours = Math.floor(this.todayStats.workTime / 3600);
+        const workMinutes = Math.floor((this.todayStats.workTime % 3600) / 60);
+        const workSeconds = this.todayStats.workTime % 60;
+        this.elements.todayWorkTime.textContent = `${workHours}:${workMinutes.toString().padStart(2, '0')}:${workSeconds.toString().padStart(2, '0')}`;
         
-        const breakHours = Math.floor(this.todayStats.breakTime / 60);
-        const breakMinutes = this.todayStats.breakTime % 60;
-        this.elements.todayBreakTime.textContent = `${breakHours}:${breakMinutes.toString().padStart(2, '0')}`;
+        const breakHours = Math.floor(this.todayStats.breakTime / 3600);
+        const breakMinutes = Math.floor((this.todayStats.breakTime % 3600) / 60);
+        const breakSecondsVal = this.todayStats.breakTime % 60;
+        this.elements.todayBreakTime.textContent = `${breakHours}:${breakMinutes.toString().padStart(2, '0')}:${breakSecondsVal.toString().padStart(2, '0')}`;
         
-        const lunchHours = Math.floor(this.todayStats.lunchTime / 60);
-        const lunchMinutes = this.todayStats.lunchTime % 60;
-        this.elements.todayLunchTime.textContent = `${lunchHours}:${lunchMinutes.toString().padStart(2, '0')}`;
+        const lunchHours = Math.floor(this.todayStats.lunchTime / 3600);
+        const lunchMinutes = Math.floor((this.todayStats.lunchTime % 3600) / 60);
+        const lunchSecondsVal = this.todayStats.lunchTime % 60;
+        this.elements.todayLunchTime.textContent = `${lunchHours}:${lunchMinutes.toString().padStart(2, '0')}:${lunchSecondsVal.toString().padStart(2, '0')}`;
         
         this.elements.todaySessions.textContent = this.todayStats.sessions;
         
-        // Update daily progress
-        const targetWorkMinutes = this.settings.workDuration * 60;
-        const progress = Math.min((this.todayStats.workTime / targetWorkMinutes) * 100, 100);
+        // Update daily progress (convert work duration from hours to seconds)
+        const targetWorkSeconds = this.settings.workDuration * 3600;
+        const progress = Math.min((this.todayStats.workTime / targetWorkSeconds) * 100, 100);
         this.elements.dailyProgressBar.style.width = `${progress}%`;
         this.elements.dailyProgressPercent.textContent = `${Math.round(progress)}%`;
+        
+        console.log('Statistics updated:', {
+            workTime: this.todayStats.workTime,
+            breakTime: this.todayStats.breakTime,
+            lunchTime: this.todayStats.lunchTime,
+            sessions: this.todayStats.sessions
+        });
+    }
+
+    calculateLunchBudget() {
+        const startTime = this.settings.workStartTime;
+        const endTime = this.settings.workEndTime;
+        const workDuration = this.settings.workDuration;
+        
+        if (startTime && endTime && workDuration) {
+            const start = new Date(`2000-01-01 ${startTime}`);
+            const end = new Date(`2000-01-01 ${endTime}`);
+            const totalHours = (end - start) / 3600000;
+            const lunchHours = totalHours - workDuration;
+            
+            if (lunchHours > 0) {
+                this.lunchBudget.totalMinutes = Math.round(lunchHours * 60);
+            } else {
+                this.lunchBudget.totalMinutes = 0;
+            }
+        } else {
+            this.lunchBudget.totalMinutes = 60; // Default 1 hour
+        }
+        
+        // Calculate used and remaining minutes
+        this.lunchBudget.usedMinutes = Math.floor(this.todayStats.lunchTime / 60);
+        this.lunchBudget.remainingMinutes = Math.max(0, this.lunchBudget.totalMinutes - this.lunchBudget.usedMinutes);
+        
+        console.log('Lunch budget calculated:', this.lunchBudget);
     }
 
     updateLunchCalculation() {
@@ -665,9 +827,14 @@ export class PomodoroTab {
             
             if (lunchHours > 0) {
                 const lunchMinutes = Math.round(lunchHours * 60);
-                this.elements.lunchCalculation.textContent = `💡 You have ${lunchMinutes} minutes (${lunchHours.toFixed(1)}h) for lunch`;
+                this.elements.lunchCalculation.textContent = `💡 Available time for lunch: ${lunchMinutes} minutes (${lunchHours.toFixed(1)}h)`;
+                this.elements.lunchCalculation.className = 'text-xs text-blue-600 bg-blue-50 p-2 rounded';
+            } else if (lunchHours < 0) {
+                this.elements.lunchCalculation.textContent = '⚠️ Work duration exceeds available time - you need more hours in your schedule';
+                this.elements.lunchCalculation.className = 'text-xs text-red-600 bg-red-50 p-2 rounded';
             } else {
-                this.elements.lunchCalculation.textContent = '⚠️ Work duration exceeds available time';
+                this.elements.lunchCalculation.textContent = '⚠️ No time available for lunch - work duration equals total time';
+                this.elements.lunchCalculation.className = 'text-xs text-orange-600 bg-orange-50 p-2 rounded';
             }
         }
     }
@@ -677,7 +844,34 @@ export class PomodoroTab {
             await this.getTimerStateFromBackground();
             this.updateCurrentTime();
             this.updateWorkDayStatus();
-            this.updateStatistics();
+            
+            // Update lunch button every minute during lunch
+            if (this.isLunchActive) {
+                this.updateButtons(); // This will update the countdown
+            }
+            
+            // Update statistics more frequently to show real-time progress
+            if (this.isRunning && this.currentPhase === 'work') {
+                // Add current session progress to display
+                const currentProgress = this.calculateCurrentWorkProgress();
+                const tempStats = { ...this.todayStats };
+                tempStats.workTime += currentProgress;
+                
+                // Temporarily update display with current progress
+                const workHours = Math.floor(tempStats.workTime / 3600);
+                const workMinutes = Math.floor((tempStats.workTime % 3600) / 60);
+                const workSeconds = tempStats.workTime % 60;
+                this.elements.todayWorkTime.textContent = `${workHours}:${workMinutes.toString().padStart(2, '0')}:${workSeconds.toString().padStart(2, '0')}`;
+                
+                // Update progress bar with current work
+                const targetWorkSeconds = this.settings.workDuration * 3600;
+                const progress = Math.min((tempStats.workTime / targetWorkSeconds) * 100, 100);
+                this.elements.dailyProgressBar.style.width = `${progress}%`;
+                this.elements.dailyProgressPercent.textContent = `${Math.round(progress)}%`;
+            } else {
+                // Normal statistics update
+                this.updateStatistics();
+            }
         }, 1000);
     }
 
@@ -847,8 +1041,16 @@ export class PomodoroTab {
         }
         
         history.slice(0, 10).forEach((day, index) => {
-            const workHours = Math.floor(day.stats.workTime / 60);
-            const workMinutes = day.stats.workTime % 60;
+            // Handle both old format (minutes) and new format (seconds)
+            let workTimeInSeconds = day.stats.workTime;
+            if (workTimeInSeconds < 3600 && day.stats.sessions > 0) {
+                // Likely old format in minutes, convert to seconds
+                workTimeInSeconds = day.stats.workTime * 60;
+            }
+            
+            const workHours = Math.floor(workTimeInSeconds / 3600);
+            const workMinutes = Math.floor((workTimeInSeconds % 3600) / 60);
+            const workSeconds = workTimeInSeconds % 60;
             
             const historyItem = document.createElement('div');
             historyItem.className = 'text-xs bg-white p-2 rounded border flex justify-between items-center';
@@ -856,7 +1058,7 @@ export class PomodoroTab {
                 <div>
                     <div class="font-medium">${day.date}</div>
                     <div class="text-gray-600">
-                        Work: ${workHours}h ${workMinutes}m | Sessions: ${day.stats.sessions}
+                        Work: ${workHours}h ${workMinutes}m ${workSeconds}s | Sessions: ${day.stats.sessions}
                     </div>
                 </div>
                 <button class="delete-history-item text-red-500 hover:text-red-700 px-1" data-index="${index}">
@@ -909,6 +1111,8 @@ export class PomodoroTab {
         if (data.advancedPomodoroSettings) {
             this.settings = { ...this.settings, ...data.advancedPomodoroSettings };
         }
+        // Recalculate lunch budget when settings are loaded
+        this.calculateLunchBudget();
     }
 
     async loadProfiles() {
@@ -923,6 +1127,8 @@ export class PomodoroTab {
         if (data.advancedPomodoroStats && data.advancedPomodoroStats.date === new Date().toDateString()) {
             this.todayStats = data.advancedPomodoroStats;
         }
+        // Recalculate lunch budget when stats are loaded
+        this.calculateLunchBudget();
     }
 
     async saveStats() {
@@ -1038,12 +1244,15 @@ export class PomodoroTab {
         
         // Reset stats for new day
         this.todayStats = {
-            workTime: 0,
-            breakTime: 0,
-            lunchTime: 0,
+            workTime: 0, // in seconds
+            breakTime: 0, // in seconds
+            lunchTime: 0, // in seconds
             sessions: 0,
             date: new Date().toDateString()
         };
+        
+        // Reset lunch budget
+        this.calculateLunchBudget();
         
         this.saveWorkDayState();
         this.saveStats();
@@ -1095,5 +1304,15 @@ export class PomodoroTab {
         };
         
         this.elements.debugInfo.textContent = JSON.stringify(debugInfo, null, 2);
+    }
+
+    calculateCurrentWorkProgress() {
+        // Calculate how much work time has been accumulated from the current session in seconds
+        if (this.isRunning && this.currentPhase === 'work' && this.totalTime > 0) {
+            const elapsedTime = this.totalTime - this.currentTime; // in seconds
+            console.log('Current work session progress:', elapsedTime, 'seconds');
+            return elapsedTime;
+        }
+        return 0;
     }
 }

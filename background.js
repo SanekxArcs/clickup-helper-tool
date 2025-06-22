@@ -262,6 +262,11 @@ class AdvancedPomodoroTimer {
                     sendResponse({ success: true, state: this.getTimerState() });
                     break;
                     
+                case 'ADVANCED_POMODORO_START_LUNCH':
+                    this.startLunchTimer();
+                    sendResponse({ success: true, state: this.getTimerState() });
+                    break;
+                    
                 case 'ADVANCED_POMODORO_PAUSE':
                     this.pauseTimer();
                     sendResponse({ success: true, state: this.getTimerState() });
@@ -298,6 +303,29 @@ class AdvancedPomodoroTimer {
             }
         }, 1000);
         
+        this.saveTimerState();
+    }
+
+    startLunchTimer() {
+        // Clear any existing timer
+        if (this.timer) {
+            clearInterval(this.timer);
+        }
+        
+        this.currentPhase = 'lunch';
+        this.currentTime = 0;
+        this.totalTime = 0; // Lunch timer counts up, no fixed duration
+        this.isRunning = true;
+        this.startTime = Date.now();
+        
+        // Lunch timer counts UP instead of down
+        this.timer = setInterval(() => {
+            this.currentTime++;
+            this.saveTimerState();
+            this.notifyPopup();
+        }, 1000);
+        
+        console.log('Lunch timer started, counting up...');
         this.saveTimerState();
     }
 
@@ -380,39 +408,58 @@ class AdvancedPomodoroTimer {
                     
                     console.log('Timer was running, elapsed time:', elapsed, 'seconds');
                     console.log('Original currentTime:', state.currentTime);
+                    console.log('Timer phase:', state.currentPhase);
                     
-                    if (elapsed < state.currentTime) {
-                        // Timer should still be running
-                        this.currentTime = Math.max(0, state.currentTime - elapsed);
-                        this.totalTime = state.totalTime;
-                        this.currentPhase = state.currentPhase;
-                        this.startTime = state.startTime;
+                    this.currentPhase = state.currentPhase;
+                    this.totalTime = state.totalTime;
+                    this.startTime = state.startTime;
+                    
+                    if (state.currentPhase === 'lunch') {
+                        // For lunch timer, add elapsed time (counting up)
+                        this.currentTime = state.currentTime + elapsed;
+                        console.log('Resuming lunch timer with currentTime:', this.currentTime);
                         
-                        console.log('Resuming timer with currentTime:', this.currentTime);
+                        // Resume lunch timer (counting up)
+                        this.isRunning = true;
+                        this.timer = setInterval(() => {
+                            this.currentTime++;
+                            this.saveTimerState();
+                            this.notifyPopup();
+                        }, 1000);
                         
-                        if (this.currentTime > 0) {
-                            // Resume timer
-                            this.isRunning = true;
-                            this.timer = setInterval(() => {
-                                this.currentTime--;
-                                this.saveTimerState();
-                                this.notifyPopup();
-                                
-                                if (this.currentTime <= 0) {
-                                    this.timerComplete();
-                                }
-                            }, 1000);
+                        console.log('Lunch timer resumed successfully');
+                    } else {
+                        // For work/break timers, subtract elapsed time (counting down)
+                        if (elapsed < state.currentTime) {
+                            // Timer should still be running
+                            this.currentTime = Math.max(0, state.currentTime - elapsed);
                             
-                            console.log('Timer resumed successfully');
+                            console.log('Resuming work/break timer with currentTime:', this.currentTime);
+                            
+                            if (this.currentTime > 0) {
+                                // Resume timer
+                                this.isRunning = true;
+                                this.timer = setInterval(() => {
+                                    this.currentTime--;
+                                    this.saveTimerState();
+                                    this.notifyPopup();
+                                    
+                                    if (this.currentTime <= 0) {
+                                        this.timerComplete();
+                                    }
+                                }, 1000);
+                                
+                                console.log('Work/break timer resumed successfully');
+                            } else {
+                                // Timer should have completed
+                                console.log('Timer should have completed, triggering completion');
+                                this.timerComplete();
+                            }
                         } else {
-                            // Timer should have completed
-                            console.log('Timer should have completed, triggering completion');
+                            // Timer should have completed while extension was closed
+                            console.log('Timer completed while extension was closed');
                             this.timerComplete();
                         }
-                    } else {
-                        // Timer should have completed while extension was closed
-                        console.log('Timer completed while extension was closed');
-                        this.timerComplete();
                     }
                 } else {
                     console.log('No running timer to resume');
