@@ -231,91 +231,74 @@ async function copyToClipboard(text) {
     }
 }
 
-// Background Pomodoro Timer System - START
-class BackgroundPomodoroTimer {
+// Advanced Pomodoro Timer System - START
+class AdvancedPomodoroTimer {
     constructor() {
         this.currentTime = 0;
         this.totalTime = 0;
         this.isRunning = false;
-        this.currentPhase = 'focus';
-        this.sessionsCompleted = 0;
-        this.totalFocusMinutes = 0;
+        this.currentPhase = 'work'; // 'work', 'break', 'lunch'
         this.timer = null;
         this.startTime = null;
+        this.settings = {
+            workTimeMinutes: 25,
+            breakTimeMinutes: 5
+        };
         
         this.initializeBackgroundTimer();
     }
 
     initializeBackgroundTimer() {
-        // Load timer state from storage
         this.loadTimerState();
-        
-        // Set up message listeners
         this.setupMessageListeners();
-        
-        // Check if timer was running when extension was closed
         this.resumeTimerIfNeeded();
     }
 
     setupMessageListeners() {
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             switch (request.type) {
-                case 'POMODORO_START':
-                    this.startTimer(request.settings);
+                case 'ADVANCED_POMODORO_START':
+                    this.startTimer(request.phase, request.duration, request.settings);
                     sendResponse({ success: true, state: this.getTimerState() });
                     break;
                     
-                case 'POMODORO_PAUSE':
+                case 'ADVANCED_POMODORO_PAUSE':
                     this.pauseTimer();
                     sendResponse({ success: true, state: this.getTimerState() });
                     break;
                     
-                case 'POMODORO_RESET':
-                    this.resetTimer();
-                    sendResponse({ success: true, state: this.getTimerState() });
-                    break;
-                    
-                case 'POMODORO_NEXT':
-                    this.nextPhase();
-                    sendResponse({ success: true, state: this.getTimerState() });
-                    break;
-                    
-                case 'POMODORO_GET_STATE':
+                case 'ADVANCED_POMODORO_GET_STATE':
                     sendResponse({ state: this.getTimerState() });
                     break;
                     
-                case 'POMODORO_UPDATE_SETTINGS':
+                case 'ADVANCED_POMODORO_UPDATE_SETTINGS':
                     this.updateSettings(request.settings);
                     sendResponse({ success: true });
                     break;
             }
-            return true; // Keep message channel open for async response
+            return true;
         });
     }
 
-    startTimer(settings) {
-        if (!this.isRunning) {
-            this.isRunning = true;
-            this.startTime = Date.now();
-            
-            if (this.currentTime === 0) {
-                this.setPhaseTime(settings);
-            }
-            
-            this.timer = setInterval(() => {
-                this.currentTime--;
-                this.saveTimerState();
-                
-                // Notify popup if it's open
-                this.notifyPopup();
-                
-                if (this.currentTime <= 0) {
-                    this.timerComplete(settings);
-                }
-            }, 1000);
-            
+    startTimer(phase, duration, settings) {
+        this.currentPhase = phase;
+        this.currentTime = duration;
+        this.totalTime = duration;
+        this.isRunning = true;
+        this.startTime = Date.now();
+        this.settings = settings;
+        
+        this.timer = setInterval(() => {
+            this.currentTime--;
             this.saveTimerState();
-        }
+            this.notifyPopup();
+            
+            if (this.currentTime <= 0) {
+                this.timerComplete();
+            }
+        }, 1000);
+        
+        this.saveTimerState();
     }
 
     pauseTimer() {
@@ -327,69 +310,17 @@ class BackgroundPomodoroTimer {
         }
     }
 
-    resetTimer() {
-        this.isRunning = false;
-        clearInterval(this.timer);
-        this.currentTime = 0;
-        this.startTime = null;
-        this.saveTimerState();
-        this.notifyPopup();
-    }
-
-    nextPhase() {
-        this.timerComplete();
-    }
-
-    timerComplete(settings) {
+    timerComplete() {
         this.isRunning = false;
         clearInterval(this.timer);
         
-        // Show notification
+        // Show notification based on phase
         this.showPhaseCompleteNotification();
         
-        // Update progress
-        if (this.currentPhase === 'focus') {
-            this.sessionsCompleted++;
-            const focusMinutes = settings ? settings.focusTime : 25;
-            this.totalFocusMinutes += focusMinutes;
-            this.savePomodoroProgress();
-        }
+        // Notify popup that timer is complete
+        this.notifyPopup(true);
         
-        // Move to next phase
-        this.advancePhase(settings);
-        this.setPhaseTime(settings);
         this.saveTimerState();
-        this.notifyPopup();
-    }
-
-    advancePhase(settings) {
-        if (this.currentPhase === 'focus') {
-            const sessionsUntilLong = settings ? settings.sessionsUntilLongBreak : 4;
-            if (this.sessionsCompleted % sessionsUntilLong === 0) {
-                this.currentPhase = 'longBreak';
-            } else {
-                this.currentPhase = 'shortBreak';
-            }
-        } else {
-            this.currentPhase = 'focus';
-        }
-    }
-
-    setPhaseTime(settings) {
-        let minutes;
-        switch (this.currentPhase) {
-            case 'focus':
-                minutes = settings ? settings.focusTime : 25;
-                break;
-            case 'shortBreak':
-                minutes = settings ? settings.shortBreak : 5;
-                break;
-            case 'longBreak':
-                minutes = settings ? settings.longBreak : 15;
-                break;
-        }
-        this.currentTime = minutes * 60;
-        this.totalTime = minutes * 60;
     }
 
     getTimerState() {
@@ -398,15 +329,14 @@ class BackgroundPomodoroTimer {
             totalTime: this.totalTime,
             isRunning: this.isRunning,
             currentPhase: this.currentPhase,
-            sessionsCompleted: this.sessionsCompleted,
-            totalFocusMinutes: this.totalFocusMinutes,
-            startTime: this.startTime
+            startTime: this.startTime,
+            timerComplete: false
         };
     }
 
     saveTimerState() {
         chrome.storage.local.set({
-            pomodoroTimerState: {
+            advancedPomodoroTimerState: {
                 ...this.getTimerState(),
                 lastSaved: Date.now()
             }
@@ -414,15 +344,13 @@ class BackgroundPomodoroTimer {
     }
 
     loadTimerState() {
-        chrome.storage.local.get(['pomodoroTimerState'], (result) => {
-            if (result.pomodoroTimerState) {
-                const state = result.pomodoroTimerState;
+        chrome.storage.local.get(['advancedPomodoroTimerState'], (result) => {
+            if (result.advancedPomodoroTimerState) {
+                const state = result.advancedPomodoroTimerState;
                 this.currentTime = state.currentTime || 0;
                 this.totalTime = state.totalTime || 0;
                 this.isRunning = state.isRunning || false;
-                this.currentPhase = state.currentPhase || 'focus';
-                this.sessionsCompleted = state.sessionsCompleted || 0;
-                this.totalFocusMinutes = state.totalFocusMinutes || 0;
+                this.currentPhase = state.currentPhase || 'work';
                 this.startTime = state.startTime;
             }
         });
@@ -430,9 +358,9 @@ class BackgroundPomodoroTimer {
 
     resumeTimerIfNeeded() {
         setTimeout(() => {
-            chrome.storage.local.get(['pomodoroTimerState'], (result) => {
-                if (result.pomodoroTimerState && result.pomodoroTimerState.isRunning) {
-                    const state = result.pomodoroTimerState;
+            chrome.storage.local.get(['advancedPomodoroTimerState'], (result) => {
+                if (result.advancedPomodoroTimerState && result.advancedPomodoroTimerState.isRunning) {
+                    const state = result.advancedPomodoroTimerState;
                     const elapsed = Math.floor((Date.now() - state.lastSaved) / 1000);
                     
                     if (elapsed < state.currentTime) {
@@ -440,8 +368,6 @@ class BackgroundPomodoroTimer {
                         this.currentTime = state.currentTime - elapsed;
                         this.totalTime = state.totalTime;
                         this.currentPhase = state.currentPhase;
-                        this.sessionsCompleted = state.sessionsCompleted;
-                        this.totalFocusMinutes = state.totalFocusMinutes;
                         this.startTime = state.startTime;
                         
                         // Resume timer
@@ -461,14 +387,16 @@ class BackgroundPomodoroTimer {
                     }
                 }
             });
-        }, 100); // Small delay to ensure proper initialization
+        }, 500);
     }
 
-    notifyPopup() {
-        // Try to send message to popup (will fail silently if popup is closed)
+    notifyPopup(timerComplete = false) {
+        const state = this.getTimerState();
+        state.timerComplete = timerComplete;
+        
         chrome.runtime.sendMessage({
-            type: 'POMODORO_STATE_UPDATE',
-            state: this.getTimerState()
+            type: 'ADVANCED_POMODORO_STATE_UPDATE',
+            state: state
         }).catch(() => {
             // Popup is closed, ignore error
         });
@@ -476,37 +404,39 @@ class BackgroundPomodoroTimer {
 
     showPhaseCompleteNotification() {
         const messages = {
-            focus: 'Focus session complete! Time for a break.',
-            shortBreak: 'Break over! Ready to focus?',
-            longBreak: 'Long break finished! Let\'s get back to work.'
+            work: '🎯 Work session complete! Time for a break!',
+            break: '☕ Break over! Ready to get back to work?',
+            lunch: '🍽️ Hope you enjoyed your lunch!'
         };
 
         const message = messages[this.currentPhase] || 'Session complete!';
         
+        // Play notification sound
         chrome.notifications.create({
             type: 'basic',
             iconUrl: 'icons/icon48.png',
-            title: 'Pomodoro Timer',
-            message: message
+            title: 'Advanced Pomodoro Timer',
+            message: message,
+            requireInteraction: true
+        });
+        
+        // Also try to play a beep sound if possible
+        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, {type: 'PLAY_NOTIFICATION_SOUND'}).catch(() => {
+                    // Content script not available, ignore
+                });
+            }
         });
     }
 
     updateSettings(settings) {
-        // Save settings for future use
-        chrome.storage.local.set({ pomodoroSettings: settings });
-    }
-
-    savePomodoroProgress() {
-        const progress = {
-            sessionsCompleted: this.sessionsCompleted,
-            totalFocusMinutes: this.totalFocusMinutes,
-            date: new Date().toDateString()
-        };
-        chrome.storage.local.set({ pomodoroProgress: progress });
+        this.settings = settings;
+        chrome.storage.local.set({ advancedPomodoroSettings: settings });
     }
 }
 
-// Initialize background timer
-const backgroundPomodoroTimer = new BackgroundPomodoroTimer();
+// Initialize advanced pomodoro timer
+const advancedPomodoroTimer = new AdvancedPomodoroTimer();
 
-// Background Pomodoro Timer System - END
+// Advanced Pomodoro Timer System - END

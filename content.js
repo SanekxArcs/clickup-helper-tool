@@ -7,6 +7,9 @@
         if (request.type === 'EXTRACT_TASK_DATA') {
             const data = extractTaskData();
             sendResponse(data);
+        } else if (request.type === 'PLAY_NOTIFICATION_SOUND') {
+            playNotificationSound();
+            sendResponse({ success: true });
         }
     });
     
@@ -112,6 +115,30 @@
             .replace(/\s+/g, ' ') // Replace multiple spaces with single space
             .trim()
             .substring(0, 500); // Limit length to avoid too long descriptions
+    }
+    
+    // Function to play notification sound
+    function playNotificationSound() {
+        try {
+            // Create a simple beep sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800; // Frequency in Hz
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (error) {
+            console.log('Could not play notification sound:', error);
+        }
     }
     
     // Auto-extract data when page loads (only on ClickUp pages)
