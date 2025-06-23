@@ -310,3 +310,65 @@ button:disabled {
 *::-webkit-scrollbar-corner {
     background: transparent;
 }
+
+/* Time Estimation Button Styles */
+.time-estimate-btn.has-estimation {
+    background-color: #f3e8ff !important; /* Light purple background */
+    border-color: #a855f7 !important; /* Purple border */
+    position: relative;
+}
+
+.time-estimate-btn.has-estimation::after {
+    content: '●';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background-color: #10b981; /* Green dot indicator */
+    border-radius: 50%;
+    font-size: 6px;
+    color: #10b981;
+    line-height: 1;
+}
+
+/* Time Estimation Tooltip */
+.time-estimation-tooltip {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.time-estimation-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid rgba(255, 255, 255, 0.98);
+}
+
+/* Position arrow below tooltip when it appears above the button */
+.time-estimation-tooltip.below::before {
+    top: auto;
+    bottom: -6px;
+    border-bottom: none;
+    border-top: 6px solid rgba(255, 255, 255, 0.98);
+}

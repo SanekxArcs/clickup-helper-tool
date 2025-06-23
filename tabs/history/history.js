@@ -1,10 +1,11 @@
 import { Utils } from '../../shared/utils.js';
+import { TimeEstimationService } from '../generate/services/time-estimation-service.js';
 
-export class HistoryTab {
-    constructor() {
+export class HistoryTab {    constructor() {
         this.elements = {};
         this.editModal = null;
         this.currentEditIndex = null;
+        this.timeEstimationService = new TimeEstimationService();
         
         // Status configuration with colors
         this.statusConfig = {
@@ -215,9 +216,9 @@ export class HistoryTab {
         const statusSelector = this.createStatusSelector(currentStatus, realIndex);
         
         return `
-            <div class="bg-white border related border-gray-200 rounded-lg p-4 mb-4 relative" data-history-index="${realIndex}">
-                <div class="absolute bottom-1 right-0 left-0 flex justify-between w-full gap-2 px-6">
+            <div class="bg-white border related border-gray-200 rounded-lg p-4 mb-4 relative" data-history-index="${realIndex}">                <div class="absolute bottom-1 right-0 left-0 flex justify-between w-full gap-2 px-6">
                     <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-gray-100 transition-all duration-300" data-edit-index="${realIndex}" title="Edit this item">✏️</button>
+                    <button class="bg-purple-50 ring-1 ring-purple-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-purple-100 transition-all duration-300 time-estimate-btn ${item.timeEstimation ? 'has-estimation' : ''}" data-time-index="${realIndex}" title="${item.timeEstimation ? 'View time estimation' : 'Generate time estimation'}">⏱️</button>
                     <button class="bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-blue-100 transition-all duration-300" data-template-index="${realIndex}" title="Go to Templates">⏭️</button>
                     <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-red-100 transition-all duration-300" data-delete-index="${realIndex}">🗑️</button>
                 </div>
@@ -332,15 +333,33 @@ export class HistoryTab {
                 const index = parseInt(button.getAttribute('data-edit-index'));
                 this.openEditModal(index);
             });
-        });
-
-        // Add click listeners to template buttons
+        });        // Add click listeners to template buttons
         const templateButtons = this.elements.historyContainer.querySelectorAll('button[data-template-index]');
         templateButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const index = parseInt(button.getAttribute('data-template-index'));
                 this.goToTemplates(index);
             });
+        });        // Add click listeners to time estimation buttons
+        const timeButtons = this.elements.historyContainer.querySelectorAll('button[data-time-index]');
+        timeButtons.forEach(button => {
+            button.addEventListener('click', async () => {
+                const index = parseInt(button.getAttribute('data-time-index'));
+                await this.handleTimeEstimation(index, button);
+            });
+            
+            // Add hover functionality for buttons that already have estimations
+            if (button.classList.contains('has-estimation')) {
+                button.addEventListener('mouseenter', async () => {
+                    const index = parseInt(button.getAttribute('data-time-index'));
+                    const data = await Utils.getStorageData(['history']);
+                    const historyItems = data.history || [];
+                    
+                    if (index >= 0 && index < historyItems.length && historyItems[index].timeEstimation) {
+                        this.showTimeEstimationTooltip(button, historyItems[index].timeEstimation);
+                    }
+                });
+            }
         });
 
         // Add click listeners to text areas for easy selection
@@ -692,8 +711,7 @@ export class HistoryTab {
                 }
             }
         });
-        
-        // Scroll the first match into view
+          // Scroll the first match into view
         if (firstMatch) {
             firstMatch.scrollIntoView({ 
                 behavior: 'smooth', 
@@ -704,5 +722,168 @@ export class HistoryTab {
         } else {
             Utils.showNotification(`Task ${taskId} not found in current view`, 'warning');
         }
+    }
+
+    async handleTimeEstimation(index, buttonElement) {
+        const data = await Utils.getStorageData(['history']);
+        const historyItems = data.history || [];
+        
+        if (index < 0 || index >= historyItems.length) {
+            Utils.showNotification('Invalid history item', 'error');
+            return;
+        }
+        
+        const item = historyItems[index];
+        
+        // If already has estimation, show it
+        if (item.timeEstimation) {
+            this.showTimeEstimationTooltip(buttonElement, item.timeEstimation);
+            return;
+        }
+        
+        // Otherwise, generate new estimation
+        try {
+            // Show loading state
+            buttonElement.innerHTML = '⏳';
+            buttonElement.disabled = true;
+            buttonElement.title = 'Generating time estimation...';
+            
+            const taskData = {
+                taskId: item.taskId,
+                taskTitle: item.taskTitle,
+                taskDescription: item.taskDescription || ''
+            };
+            
+            const estimation = await this.timeEstimationService.estimateTime(taskData);
+            
+            // Save estimation to history
+            historyItems[index].timeEstimation = estimation;
+            await Utils.setStorageData({ history: historyItems });
+            
+            // Update button appearance
+            buttonElement.innerHTML = '⏱️';
+            buttonElement.disabled = false;
+            buttonElement.classList.add('has-estimation');
+            buttonElement.title = 'View time estimation';
+            
+            // Show the estimation
+            this.showTimeEstimationTooltip(buttonElement, estimation);
+            
+            Utils.showNotification('Time estimation generated successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Time estimation error:', error);
+            
+            // Reset button state
+            buttonElement.innerHTML = '⏱️';
+            buttonElement.disabled = false;
+            buttonElement.title = 'Generate time estimation';
+            
+            Utils.showNotification(`Time estimation failed: ${error.message}`, 'error');
+        }
+    }
+
+    showTimeEstimationTooltip(buttonElement, estimation) {
+        // Remove any existing tooltips
+        const existingTooltip = document.querySelector('.time-estimation-tooltip');
+        if (existingTooltip) {
+            existingTooltip.remove();
+        }
+        
+        // Create tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'time-estimation-tooltip absolute z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs';
+        tooltip.style.minWidth = '200px';
+          tooltip.innerHTML = `
+            <div class="font-semibold text-gray-800 mb-2 border-b border-gray-200 pb-2">⏱️ Time Estimation</div>
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-green-600 flex items-center">
+                        <span class="mr-1">🎓</span>
+                        <span>Junior:</span>
+                    </span>
+                    <span class="font-mono bg-green-50 px-2 py-1 rounded text-green-800">${estimation.junior}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-blue-600 flex items-center">
+                        <span class="mr-1"></span>
+                        <span>Mid-level:</span>
+                    </span>
+                    <span class="font-mono bg-blue-50 px-2 py-1 rounded text-blue-800">${estimation.mid}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-purple-600 flex items-center">
+                        <span class="mr-1">�</span>
+                        <span>Senior:</span>
+                    </span>
+                    <span class="font-mono bg-purple-50 px-2 py-1 rounded text-purple-800">${estimation.senior}</span>
+                </div>
+            </div>
+            ${estimation.reasoning ? `
+                <div class="mt-3 pt-2 border-t border-gray-200">
+                    <div class="text-gray-600 text-xs">
+                        <strong>💡 Reasoning:</strong><br>
+                        <span class="text-gray-500">${estimation.reasoning}</span>
+                    </div>
+                </div>
+            ` : ''}
+            <div class="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-400 flex items-center">
+                <span class="mr-1">🕐</span>
+                Generated: ${new Date(estimation.timestamp).toLocaleString()}
+            </div>
+        `;
+        
+        document.body.appendChild(tooltip);
+        
+        // Position tooltip
+        const buttonRect = buttonElement.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+        
+        // Position above the button by default
+        let top = buttonRect.top - tooltipRect.height - 8;
+        let left = buttonRect.left + (buttonRect.width / 2) - (tooltipRect.width / 2);
+        
+        // Adjust if tooltip goes off screen
+        if (top < 8) {
+            top = buttonRect.bottom + 8; // Position below instead
+        }
+        if (left < 8) {
+            left = 8;
+        }
+        if (left + tooltipRect.width > window.innerWidth - 8) {
+            left = window.innerWidth - tooltipRect.width - 8;
+        }
+        
+        tooltip.style.top = `${top + window.scrollY}px`;
+        tooltip.style.left = `${left}px`;
+        
+        // Auto-hide tooltip after 10 seconds
+        const hideTimeout = setTimeout(() => {
+            if (tooltip.parentNode) {
+                tooltip.remove();
+            }
+        }, 10000);
+        
+        // Hide on click outside
+        const hideOnClickOutside = (e) => {
+            if (!tooltip.contains(e.target) && e.target !== buttonElement) {
+                tooltip.remove();
+                document.removeEventListener('click', hideOnClickOutside);
+                clearTimeout(hideTimeout);
+            }
+        };
+        
+        // Small delay to prevent immediate hiding from the button click
+        setTimeout(() => {
+            document.addEventListener('click', hideOnClickOutside);
+        }, 100);
+        
+        // Hide on scroll
+        const hideOnScroll = () => {
+            tooltip.remove();
+            document.removeEventListener('scroll', hideOnScroll);
+            clearTimeout(hideTimeout);
+        };
+        document.addEventListener('scroll', hideOnScroll);
     }
 }
