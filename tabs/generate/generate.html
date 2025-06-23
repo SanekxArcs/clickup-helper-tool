@@ -1,68 +1,107 @@
 <!-- Generate Tab -->
 <div id="generate-tab" class="tab-content block">
-    <div id="rateLimitWarning" class="bg-red-100 text-red-700 p-2.5 rounded-md mb-2 text-xs border-l-4 border-red-500 hidden">
+    <div id="rateLimitWarning"
+        class="bg-red-100 text-red-700 p-2.5 rounded-md mb-2 text-xs border-l-4 border-red-500 hidden">
         ⚠️ Rate limit reached. Free tier: 15 requests/minute, 1,500 requests/day. Please wait.
     </div>
-    
+
     <div class="flex gap-2 items-center mb-2">
-        <button id="autoFillBtn" class=" bg-orange-50 ring-1 ring-orange-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-orange-100 transition-all duration-300">📋 Auto-fill from current page</button>
-        <button id="clearFieldsBtn" class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-red-100 transition-all duration-300">🗑️ Clear Fields</button>
+        <button id="autoFillBtn"
+            class=" bg-orange-50 ring-1 ring-orange-400 text-black border-none p-1 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-orange-100 transition-all duration-300">📋
+            Auto-fill from current page</button>
+        <button id="saveTaskBtn"
+            class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none p-1 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-emerald-100 transition-all duration-300">📋
+            Copy MD Link</button>
+        <button id="clearFieldsBtn"
+            class="bg-red-50 ring-1 ring-red-400 text-black border-none p-1 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-red-100 transition-all duration-300">🗑️
+            Clear Fields</button>
     </div>
     <div class="flex flex-col gap-2 items-center mb-2">
-        <button id="saveTaskBtn" class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-emerald-100 transition-all duration-300">📋 Copy MD Link</button>
-        <button id="generateBtn" class="bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-blue-100 transition-all duration-300">🎯 Generate Branch & Commit</button>
+        <button id="generateBtn"
+            class="bg-blue-50 ring-1 ring-blue-400 hover:p-3 text-black border-none p-1 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-blue-100 transition-all duration-300">🎯
+            Generate Branch & Commit</button>
     </div>
-    
+
     <div class="mb-2">
-        <div id="priorityIndicator" class="bg-blue-100 text-blue-700 p-1.5 rounded-md text-xs border-l-4 border-blue-500 hidden">
-        ℹ️ <span id="priorityIndicatorText">Priority auto-detected from task content</span>
-    </div>
+        
         <label for="taskPriority" class="block mb-1 font-semibold text-gray-700">Task Priority:</label>
-        <select id="taskPriority" class="w-full py-1.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+        <select id="taskPriority"
+            class="w-full py-1.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
             <option value="Low">🟢 Low</option>
             <option value="Normal" selected>🔵 Normal</option>
             <option value="High">🟡 High</option>
             <option value="Urgent">🔴 Urgent</option>
         </select>
+        <div class="hidden mt-2" id="priorityIndicator"
+            class="bg-blue-100 text-blue-700 rounded-md text-xs border-l-4 border-blue-500 hidden">
+            ℹ️ <span id="priorityIndicatorText">Priority auto-detected from task content</span>
+        </div>
     </div>
-    
-    
+
+
     <div class="mb-2">
         <label for="taskId" class="block mb-1 font-semibold text-gray-700">Task ID:</label>
-        <input type="text" id="taskId" placeholder="e.g., WDEV-13729" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+        <input type="text" id="taskId" placeholder="e.g., WDEV-13729"
+            class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
     </div>
-    
+
     <div class="mb-2">
         <label for="taskTitle" class="block mb-1 font-semibold text-gray-700">Task Title:</label>
-        <input type="text" id="taskTitle" placeholder="Brief task description" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
+        <input type="text" id="taskTitle" placeholder="Brief task description"
+            class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
     </div>
-    
+
     <div class="mb-2">
         <label for="taskDescription" class="block mb-1 font-semibold text-gray-700">Task Description:</label>
-        <textarea id="taskDescription" placeholder="Detailed task description" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-20 resize-y"></textarea>
+        <textarea id="taskDescription" placeholder="Detailed task description"
+            class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-20 resize-y"></textarea>
     </div>
-    
-    
-    
-    
-    
+
+
+
+
+
     <div id="results" class="mt-5 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500 hidden">
         <div class="mb-2">
             <div class="font-semibold text-gray-700 mb-2">Branch Name:</div>
-            <div id="branchResult" class="bg-white p-2.5 rounded-md border border-gray-200 font-mono text-xs break-all relative select-all cursor-text hover:bg-gray-50 hover:border-gray-300"></div>
-            <button id="copyBranchBtn" class="copy-btn bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-[100px] hover:bg-emerald-100 transition-all duration-300 mt-2">📋 Copy</button>
+            <div id="branchResult"
+                class="bg-white p-2.5 rounded-md border border-gray-200 font-mono text-xs break-all relative select-all cursor-text hover:bg-gray-50 hover:border-gray-300">
+            </div>
+            <div class="flex gap-2 mt-2">
+                <button id="copyBranchBtn"
+                    class="copy-btn bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-emerald-100 transition-all duration-300">📋
+                    Copy</button>
+                <button id="regenerateBranchBtn"
+                    class="regen-btn bg-orange-50 ring-1 ring-orange-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-orange-100 transition-all duration-300">�
+                    Regenerate</button>
+            </div>
         </div>
-        
+
         <div class="mb-2">
             <div class="font-semibold text-gray-700 mb-2">Commit Message:</div>
-            <div id="commitResult" class="bg-white p-2.5 rounded-md border border-gray-200 font-mono text-xs break-all relative select-all cursor-text hover:bg-gray-50 hover:border-gray-300"></div>
-            <button id="copyCommitBtn" class="copy-btn bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-[100px] hover:bg-emerald-100 transition-all duration-300 mt-2">📋 Copy</button>
+            <div id="commitResult"
+                class="bg-white p-2.5 rounded-md border border-gray-200 font-mono text-xs break-all relative select-all cursor-text hover:bg-gray-50 hover:border-gray-300">
+            </div>
+            <div class="flex gap-2 mt-2">
+                <button id="copyCommitBtn"
+                    class="copy-btn bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-emerald-100 transition-all duration-300">📋
+                    Copy</button>
+                <button id="regenerateCommitBtn"
+                    class="regen-btn bg-orange-50 ring-1 ring-orange-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-orange-100 transition-all duration-300">🔄
+                    Regenerate</button>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-3">
+            <button id="regenerateBothBtn"
+                class="regen-btn bg-purple-50 ring-1 ring-purple-400 text-black border-none px-3 py-2 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 hover:bg-purple-100 transition-all duration-300">�
+                Regenerate Both</button>
         </div>
     </div>
-    
+
     <div id="loading" class="text-center text-gray-500 italic hidden">
         Generating with Gemini AI...
     </div>
-    
+
     <div id="error" class="text-red-500 bg-red-100 p-2.5 rounded-md mt-2.5 hidden"></div>
 </div>

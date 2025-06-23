@@ -402,8 +402,8 @@ Return ONLY in this exact JSON format:
         const indicatorText = this.elements.priorityIndicatorText;
         
         // Reset classes
-        indicator.className = 'p-2.5 rounded-md mb-4 text-xs border-l-4';
-        
+        indicator.className = 'rounded-md mb-4 text-xs border-l-4';
+
         switch (priority) {
             case 'Low':
                 indicator.classList.add('bg-green-100', 'text-green-700', 'border-green-500');

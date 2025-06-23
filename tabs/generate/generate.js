@@ -177,9 +177,7 @@ export class GenerateTab {
         this.setupEventListeners();
         await this.loadSettings();
         this.loadLastGeneration();
-    }
-
-    initializeElements() {
+    }    initializeElements() {
         this.elements = {
             taskId: document.getElementById('taskId'),
             taskTitle: document.getElementById('taskTitle'),
@@ -196,7 +194,11 @@ export class GenerateTab {
             error: document.getElementById('error'),
             rateLimitWarning: document.getElementById('rateLimitWarning'),
             priorityIndicator: document.getElementById('priorityIndicator'),
-            priorityIndicatorText: document.getElementById('priorityIndicatorText')
+            priorityIndicatorText: document.getElementById('priorityIndicatorText'),
+            // New regeneration buttons
+            regenerateBranchBtn: document.getElementById('regenerateBranchBtn'),
+            regenerateCommitBtn: document.getElementById('regenerateCommitBtn'),
+            regenerateBothBtn: document.getElementById('regenerateBothBtn')
         };
     }
 
@@ -232,8 +234,7 @@ export class GenerateTab {
                 }
             });
         }
-        
-        if (copyCommitBtn) {
+          if (copyCommitBtn) {
             copyCommitBtn.addEventListener('click', async (e) => {
                 const text = this.elements.commitResult.textContent;
                 if (text && text !== 'No commit message generated') {
@@ -243,6 +244,19 @@ export class GenerateTab {
                     Utils.showNotification('No commit message to copy', 'warning');
                 }
             });
+        }
+
+        // Regeneration buttons
+        if (this.elements.regenerateBranchBtn) {
+            this.elements.regenerateBranchBtn.addEventListener('click', () => this.regenerateBranch());
+        }
+        
+        if (this.elements.regenerateCommitBtn) {
+            this.elements.regenerateCommitBtn.addEventListener('click', () => this.regenerateCommit());
+        }
+        
+        if (this.elements.regenerateBothBtn) {
+            this.elements.regenerateBothBtn.addEventListener('click', () => this.regenerateBoth());
         }
     }
 
@@ -402,8 +416,8 @@ Return ONLY in this exact JSON format:
         const indicatorText = this.elements.priorityIndicatorText;
         
         // Reset classes
-        indicator.className = 'p-2.5 rounded-md mb-4 text-xs border-l-4';
-        
+        indicator.className = 'p-1 rounded-md mt-2 text-xs border-l-4';
+
         switch (priority) {
             case 'Low':
                 indicator.classList.add('bg-green-100', 'text-green-700', 'border-green-500');
@@ -804,15 +818,21 @@ Return ONLY in this exact JSON format:
         setTimeout(() => {
             this.elements.rateLimitWarning.classList.add('hidden');
         }, 5000);
-    }
-
-    showLoading(show) {
+    }    showLoading(show) {
         if (show) {
             this.elements.loading.classList.remove('hidden');
             this.elements.generateBtn.disabled = true;
+            // Disable regeneration buttons during loading
+            if (this.elements.regenerateBranchBtn) this.elements.regenerateBranchBtn.disabled = true;
+            if (this.elements.regenerateCommitBtn) this.elements.regenerateCommitBtn.disabled = true;
+            if (this.elements.regenerateBothBtn) this.elements.regenerateBothBtn.disabled = true;
         } else {
             this.elements.loading.classList.add('hidden');
             this.elements.generateBtn.disabled = false;
+            // Re-enable regeneration buttons after loading
+            if (this.elements.regenerateBranchBtn) this.elements.regenerateBranchBtn.disabled = false;
+            if (this.elements.regenerateCommitBtn) this.elements.regenerateCommitBtn.disabled = false;
+            if (this.elements.regenerateBothBtn) this.elements.regenerateBothBtn.disabled = false;
         }
     }
 
@@ -829,8 +849,7 @@ Return ONLY in this exact JSON format:
         // Get the tab manager from the global application object
         const tabManager = window.application?.tabManager;
         const historyTab = window.application?.tabs?.history;
-        
-        if (tabManager && historyTab) {
+          if (tabManager && historyTab) {
             // Switch to the History tab
             tabManager.switchTab('history');
             
@@ -839,5 +858,258 @@ Return ONLY in this exact JSON format:
                 historyTab.searchAndHighlightTask(taskId);
             }, 100);
         }
+    }
+
+    // New regeneration methods
+    async regenerateBranch() {
+        const taskId = this.elements.taskId.value.trim();
+        const taskTitle = this.elements.taskTitle.value.trim();
+        const taskDescription = this.elements.taskDescription.value.trim();
+        const taskPriority = this.elements.taskPriority.value;
+
+        if (!taskId || !taskTitle) {
+            this.showError('Please fill in at least Task ID and Task Title');
+            return;
+        }
+
+        this.showLoading(true);
+        this.hideError();
+
+        try {
+            const data = await Utils.getStorageData(['apiKey', 'geminiModel', 'temperature', 'branchRules']);
+            
+            if (!data.apiKey) {
+                this.showError('Please set your Gemini API key in Settings');
+                return;
+            }
+
+            // Check rate limits
+            const rateLimitOk = await this.checkRateLimit();
+            if (!rateLimitOk) {
+                this.showRateLimitWarning();
+                return;
+            }
+
+            const result = await this.callGeminiAPIForBranch(data, taskId, taskTitle, taskDescription, taskPriority);
+            
+            // Update only the branch result
+            this.elements.branchResult.textContent = result.branchName || 'No branch name generated';
+            
+            // Update history if there's already a result
+            const currentCommit = this.elements.commitResult.textContent;
+            if (currentCommit && currentCommit !== 'No commit message generated') {
+                const fullResult = {
+                    branchName: result.branchName,
+                    commitMessage: currentCommit
+                };
+                await this.saveToHistory(taskId, taskTitle, taskDescription, taskPriority, fullResult);
+            }
+            
+            Utils.showNotification('Branch name regenerated!', 'success');
+        } catch (error) {
+            console.error('Branch regeneration error:', error);
+            this.showError(`Branch regeneration failed: ${error.message}`);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async regenerateCommit() {
+        const taskId = this.elements.taskId.value.trim();
+        const taskTitle = this.elements.taskTitle.value.trim();
+        const taskDescription = this.elements.taskDescription.value.trim();
+        const taskPriority = this.elements.taskPriority.value;
+
+        if (!taskId || !taskTitle) {
+            this.showError('Please fill in at least Task ID and Task Title');
+            return;
+        }
+
+        this.showLoading(true);
+        this.hideError();
+
+        try {
+            const data = await Utils.getStorageData(['apiKey', 'geminiModel', 'temperature', 'commitRules']);
+            
+            if (!data.apiKey) {
+                this.showError('Please set your Gemini API key in Settings');
+                return;
+            }
+
+            // Check rate limits
+            const rateLimitOk = await this.checkRateLimit();
+            if (!rateLimitOk) {
+                this.showRateLimitWarning();
+                return;
+            }
+
+            const result = await this.callGeminiAPIForCommit(data, taskId, taskTitle, taskDescription, taskPriority);
+            
+            // Update only the commit result
+            this.elements.commitResult.textContent = result.commitMessage || 'No commit message generated';
+            
+            // Update history if there's already a result
+            const currentBranch = this.elements.branchResult.textContent;
+            if (currentBranch && currentBranch !== 'No branch name generated') {
+                const fullResult = {
+                    branchName: currentBranch,
+                    commitMessage: result.commitMessage
+                };
+                await this.saveToHistory(taskId, taskTitle, taskDescription, taskPriority, fullResult);
+            }
+            
+            Utils.showNotification('Commit message regenerated!', 'success');
+        } catch (error) {
+            console.error('Commit regeneration error:', error);
+            this.showError(`Commit regeneration failed: ${error.message}`);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async regenerateBoth() {
+        // Simply call the existing generateBranchAndCommit method
+        await this.generateBranchAndCommit();
+        Utils.showNotification('Both branch and commit regenerated!', 'success');
+    }
+
+    // Helper methods for individual API calls
+    async callGeminiAPIForBranch(settings, taskId, taskTitle, taskDescription, taskPriority) {
+        const prompt = this.buildBranchPrompt(settings, taskId, taskTitle, taskDescription, taskPriority);
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${settings.geminiModel || 'gemini-1.5-flash'}:generateContent?key=${settings.apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: settings.temperature || 0.3,
+                    maxOutputTokens: 500,
+                    topP: 0.8,
+                    topK: 40,
+                    stopSequences: []
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+            throw new Error('Invalid API response format');
+        }
+
+        const text = data.candidates[0].content.parts[0].text;
+        const branchName = this.extractBranchFromText(text);
+        
+        return { branchName };
+    }
+
+    async callGeminiAPIForCommit(settings, taskId, taskTitle, taskDescription, taskPriority) {
+        const prompt = this.buildCommitPrompt(settings, taskId, taskTitle, taskDescription, taskPriority);
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${settings.geminiModel || 'gemini-1.5-flash'}:generateContent?key=${settings.apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: settings.temperature || 0.3,
+                    maxOutputTokens: 500,
+                    topP: 0.8,
+                    topK: 40,
+                    stopSequences: []
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+            throw new Error('Invalid API response format');
+        }
+
+        const text = data.candidates[0].content.parts[0].text;
+        const commitMessage = this.extractCommitFromText(text);
+        
+        return { commitMessage };
+    }
+
+    buildBranchPrompt(settings, taskId, taskTitle, taskDescription, taskPriority) {
+        const branchRules = settings.branchRules || `
+Use feature/ prefix for new features
+Use bugfix/ prefix for bug fixes  
+Use hotfix/ prefix for urgent fixes
+Keep names under 50 characters
+Use kebab-case formatting
+Include task ID when available
+        `.trim();
+
+        const priorityPrefix = taskPriority === 'Urgent' ? 'hotfix/' : 'feature/';
+
+        return `Generate a git branch name for this task:
+
+Task ID: ${taskId}
+Task Title: ${taskTitle}
+Task Description: ${taskDescription}
+Priority: ${taskPriority}
+
+Branch Naming Rules:
+${branchRules}
+
+Suggested prefix based on priority: ${priorityPrefix}
+
+Please generate ONLY the branch name, nothing else. Format: prefix/task-id-brief-description`;
+    }
+
+    buildCommitPrompt(settings, taskId, taskTitle, taskDescription, taskPriority) {
+        const commitRules = settings.commitRules || `
+Start with task ID in brackets if available
+Use present tense verbs
+Be descriptive but concise
+Include context about what was changed
+Mention breaking changes if any
+Follow conventional commit format when possible
+        `.trim();
+
+        const commitPrefix = taskPriority === 'Urgent' ? 'fix:' : 'feat:';
+
+        return `Generate a git commit message for this task:
+
+Task ID: ${taskId}
+Task Title: ${taskTitle}
+Task Description: ${taskDescription}
+Priority: ${taskPriority}
+
+Commit Message Rules:
+${commitRules}
+
+Suggested prefix based on priority: ${commitPrefix}
+
+Please generate ONLY the commit message, nothing else. Format: type: [TASK-ID] description`;
+    }
+
+    extractBranchFromText(text) {
+        // Extract branch name from the API response
+        const lines = text.split('\n').filter(line => line.trim());
+        for (const line of lines) {
+            if (line.includes('/') && !line.includes(' ')) {
+                return line.trim();
+            }
+        }
+        return lines[0]?.trim() || text.trim();
+    }
+
+    extractCommitFromText(text) {
+        // Extract commit message from the API response
+        const lines = text.split('\n').filter(line => line.trim());
+        return lines[0]?.trim() || text.trim();
     }
 }
