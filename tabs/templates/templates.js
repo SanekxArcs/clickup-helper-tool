@@ -231,10 +231,10 @@ export class TemplatesTab {
         let isValid = false;
         
         if (tester && branch) {
-            message = `@${tester} task is completed, please check: "${branch}"`;
+            message = `@${tester} task is completed, please check: ${branch}`;
             isValid = true;
         } else if (tester) {
-            message = `@${tester} task is completed, please check: "[branch name]"`;
+            message = `@${tester} task is completed, please check: [branch name]`;
         } else {
             message = 'Select tester and add branch name to generate message';
         }

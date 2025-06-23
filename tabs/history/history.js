@@ -310,7 +310,7 @@ export class HistoryTab {
             button.addEventListener('click', function() {
                 const commitText = this.getAttribute('data-commit-text');
                 const taskId = this.getAttribute('data-task-id');
-                const gitCommand = `git commit -m "${commitText}"`;
+                const gitCommand = `git commit -m "${commitText}" --no-verify`;
                 Utils.copyToClipboard(gitCommand);
                 Utils.showNotification(`Git command copied: ${gitCommand}`);
             });
