@@ -2,11 +2,37 @@
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Branch & Commit Helper extension installed');
     
-    // Create context menu
+    // Create context menu for task extraction
     chrome.contextMenus.create({
         id: 'getBranchAndCommit',
         title: 'Get Branch and Commit',
         contexts: ['page']
+    });
+    
+    // Create context menu for environment switching
+    chrome.contextMenus.create({
+        id: 'switchEnvironment',
+        title: 'Go to Dev Environment',
+        contexts: ['page']
+    });
+    
+    // Create submenu items for different environments
+    const environments = [
+        { id: 'localhost', title: 'localhost:3000', url: 'http://localhost:3000' },
+        { id: 'test1', title: 'test1.priwatt.de', url: 'https://test1.priwatt.de' },
+        { id: 'test2', title: 'test2.priwatt.de', url: 'https://test2.priwatt.de' },
+        { id: 'test3', title: 'test3.priwatt.de', url: 'https://test3.priwatt.de' },
+        { id: 'test4', title: 'test4.priwatt.de', url: 'https://test4.priwatt.de' },
+        { id: 'test5', title: 'test5.priwatt.de', url: 'https://test5.priwatt.de' }
+    ];
+    
+    environments.forEach(env => {
+        chrome.contextMenus.create({
+            id: `env_${env.id}`,
+            parentId: 'switchEnvironment',
+            title: env.title,
+            contexts: ['page']
+        });
     });
 });
 
@@ -18,8 +44,43 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
             target: { tabId: tab.id },
             function: extractAndStoreTaskData
         });
+    } else if (info.menuItemId.startsWith('env_')) {
+        // Handle environment switching
+        handleEnvironmentSwitch(info.menuItemId, tab);
     }
 });
+
+// Function to handle environment switching
+function handleEnvironmentSwitch(menuItemId, tab) {
+    const environments = {
+        'env_localhost': 'http://localhost:3000',
+        'env_test1': 'https://test1.priwatt.de',
+        'env_test2': 'https://test2.priwatt.de',
+        'env_test3': 'https://test3.priwatt.de',
+        'env_test4': 'https://test4.priwatt.de',
+        'env_test5': 'https://test5.priwatt.de'
+    };
+    
+    const targetBaseUrl = environments[menuItemId];
+    if (!targetBaseUrl) return;
+    
+    const currentUrl = tab.url;
+    const currentUrlObj = new URL(currentUrl);
+    
+    // Extract the path and query parameters from current URL
+    const pathAndQuery = currentUrlObj.pathname + currentUrlObj.search + currentUrlObj.hash;
+    
+    // Construct the new URL with the target environment
+    const newUrl = targetBaseUrl + pathAndQuery;
+    
+    // Open in new tab
+    chrome.tabs.create({
+        url: newUrl,
+        active: true
+    });
+    
+    console.log(`Redirecting from ${currentUrl} to ${newUrl}`);
+}
 
 // Function to extract task data and store it
 function extractAndStoreTaskData() {
