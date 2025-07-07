@@ -184,10 +184,10 @@ export class TemplatesTab {
         if (reviewer1) {
             if (reviewer2) {
                 // Two reviewers
-                message = `Hey @${reviewer1} and @${reviewer2}. Please make a code review for my merge request ${link ? '[link]' : '[link]'}.`;
+                message = `Hey @${reviewer1} and @${reviewer2}. Please make a code review for my merge request ${link ? link : '[link]'}.`;
             } else {
                 // One reviewer
-                message = `Hey @${reviewer1}. Please make a code review for my merge request ${link ? '[link]' : '[link]'}.`;
+                message = `Hey @${reviewer1}. Please make a code review for my merge request ${link ? link : '[link]'}.`;
             }
             isValid = true;
         } else {
@@ -255,7 +255,7 @@ export class TemplatesTab {
         
         if (!tester || !branch) return;
         
-        const message = `@${tester} task is completed, please check: "${branch}"`;
+        const message = `@${tester} task is completed, please check: ${branch}`;
         
         Utils.copyToClipboard(message);
         Utils.showNotification('QA message copied to clipboard!');

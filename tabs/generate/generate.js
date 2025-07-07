@@ -399,8 +399,8 @@ Return ONLY in this exact JSON format:
             },
             'Urgent': {
                 branchPrefix: 'hotfix/',
-                commitPrefix: 'fix:',
-                instructions: '- This is an URGENT task, use hotfix/ branch prefix and fix: commit prefix for immediate attention'
+                commitPrefix: 'feat:',
+                instructions: '- This is an URGENT task, use hotfix/ branch prefix and feat: commit prefix for immediate attention'
             }
         };
         
@@ -1043,13 +1043,22 @@ Return ONLY in this exact JSON format:
     }
 
     buildBranchPrompt(settings, taskId, taskTitle, taskDescription, taskPriority) {
-        const branchRules = settings.branchRules || `
-Use feature/ prefix for new features
-Use bugfix/ prefix for bug fixes  
-Use hotfix/ prefix for urgent fixes
-Keep names under 50 characters
-Use kebab-case formatting
-Include task ID when available
+        const branchRules = settings.branchRules || `Naming:
+
+feature/\<name>_<#taskid> - uses for develop of new functionality. It should be created from the develop branch. Examples: feature/about_us_page_#123, feature/add_rest_api_#234.
+release/\versionId> - supports the preparation of a new production release, it should be created from the develop branch. Examples: release/v1.2.1, release/v3.0.0.
+hotfix/\<name>_<#taskid?> - uses for quick/urgent fixes. urgent, If a bug is detected in the production environment, it should be created from the main (old name master) branch. Examples: hotfix/burger_menu_fix#432, hotfix/animation_fix#754.
+for spaces use only: _
+
+\<name> - should be in lowercase, unique, and shortly describe the functionality. Don't use a commit message in the name of a branch, because commit means what was done but the branch describes a functionality, entity, module, page, component, or feature. In common situations, the name of a task is the name of a branch.
+
+\<#taskid> - relative task ID in the issue tracker, but it is not an optional parameter if there is no relative task
+
+\<versionId> - next release which reflects changes in the production release
+
+Note: allowed symbols are underscore (_) , where underscore is equal to space key.
+
+ID at the end can be only #{LetterCode}-{NumberCode} -expample: #WDEV-12345
         `.trim();
 
         const priorityPrefix = taskPriority === 'Urgent' ? 'hotfix/' : 'feature/';
@@ -1070,14 +1079,27 @@ Please generate ONLY the branch name, nothing else. Format: prefix/task-id-brief
     }
 
     buildCommitPrompt(settings, taskId, taskTitle, taskDescription, taskPriority) {
-        const commitRules = settings.commitRules || `
-Start with task ID in brackets if available
-Use present tense verbs
-Be descriptive but concise
-Include context about what was changed
-Mention breaking changes if any
-Follow conventional commit format when possible
-        `.trim();
+        const commitRules = settings.commitRules || `Rules for Git Commit Message Generation1. Required Inputs
+To generate a commit message, provide the following data:
+
+type: (String, Required) The category of the change.
+subject: (String, Required) A short description of the work.
+task_id: (String, Required) The ID from the issue tracker (e.g., "WDEV-7777").
+scope: (String, Optional) The part of the codebase affected.
+body: (String, Optional) A more detailed explanation.
+is_monorepo: (Boolean, Optional) true if the repo contains both front-end and back-end code.
+2. Core Constraints
+Header Length: The first line (header) must not exceed 72 characters.
+Tense: All descriptions (subject, body) must use the imperative, present tense (e.g., "add", "fix", "change").
+3. Generation Logic
+Step 1: Assemble the Header
+The header format is: <type>: <subject> <task_id>
+<type>: Required. Must be one of the following enum values: build, ci, docs, feat, fix, perf, refactor, style, test. (usualy its feat of fix)
+<subject>: Required. Formatting Rules: Do not capitalize the first letter. Do not end with a period (.).
+<task_id>:Required. Format as a space followed by a hash and the ID. Example:  #WDEV-7777.
+WE DONT PROVIDE BODY!
+
+`.trim();
 
         const commitPrefix = taskPriority === 'Urgent' ? 'fix:' : 'feat:';
 
