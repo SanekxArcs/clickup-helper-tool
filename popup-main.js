@@ -3,8 +3,8 @@ import { TabManager } from './shared/tab-manager.js';
 import { GenerateTab } from './tabs/generate/generate.js';
 import { HistoryTab } from './tabs/history/history.js';
 import { TemplatesTab } from './tabs/templates/templates.js';
-import { PomodoroTab } from './tabs/pomodoro/pomodoro.js';
 import { SettingsTab } from './tabs/settings/settings.js';
+import { ToolsTab } from './tabs/tools/tools.js';
 import { Utils } from './shared/utils.js';
 
 class Application {
@@ -51,8 +51,8 @@ class Application {
             this.loadTabHTML('generate'),
             this.loadTabHTML('history'), 
             this.loadTabHTML('templates'),
-            this.loadTabHTML('pomodoro'),
-            this.loadTabHTML('settings')
+            this.loadTabHTML('settings'),
+            this.loadTabHTML('tools')
         ]);
 
         // Insert all tab content
@@ -103,13 +103,13 @@ class Application {
         this.tabs.templates = new TemplatesTab();
         this.tabManager.registerTab('templates', this.tabs.templates);
 
-        // Initialize Pomodoro tab
-        this.tabs.pomodoro = new PomodoroTab();
-        this.tabManager.registerTab('pomodoro', this.tabs.pomodoro);
-
         // Initialize Settings tab
         this.tabs.settings = new SettingsTab();
         this.tabManager.registerTab('settings', this.tabs.settings);
+
+        // Initialize Tools tab
+        this.tabs.tools = new ToolsTab();
+        this.tabManager.registerTab('tools', this.tabs.tools);
 
         // Check if we should auto-switch to History tab for ClickUp pages
         await this.checkForAutoSwitchToHistory();

@@ -1,6 +1,6 @@
 # 🚀 Branch & Commit Helper
 
-A powerful Chrome extension that generates intelligent branch names and commit messages using Google's Gemini AI, with advanced auto-search and workflow automation for ClickUp and GitLab integration. Features an advanced Pomodoro timer system with workday management, lunch budget tracking, and productivity statistics, plus environment context menu for seamless development workflow switching.
+A powerful Chrome extension that generates intelligent branch names and commit messages using Google's Gemini AI, with advanced auto-search and workflow automation for ClickUp and GitLab integration. Features environment context menu for seamless development workflow switching and comprehensive project management tools.
 
 ## ✨ Key Features
 
@@ -40,7 +40,7 @@ A powerful Chrome extension that generates intelligent branch names and commit m
 - **Smart URL Handling**: Preserves paths, queries, and fragments when switching environments
 
 ### 🎨 **Modern UI & UX**
-- **Modular Tab Architecture**: Separate folders and files for each feature (Generate, History, Templates, Pomodoro, Settings)
+- **Modular Tab Architecture**: Separate folders and files for each feature (Generate, History, Templates, Settings)
 - **Visual Highlighting**: Blue borders and backgrounds for highlighted history items
 - **Toast Notifications**: Success/error feedback for all operations
 - **Copy Buttons**: One-click copying for branch names, commit messages, and Git commands
@@ -89,57 +89,13 @@ A powerful Chrome extension that generates intelligent branch names and commit m
    - All regenerations maintain the original task data while creating new variations
 5. Copy the results with one-click buttons
 
-#### **Pomodoro Timer Workflow**
-1. Go to the **Pomodoro** tab
-2. Set your workday hours (start time, end time)
-3. Click "Start" to begin your work session
-4. Timer runs in the background even when popup is closed
-5. Use "Lunch" button to track lunch breaks (shows remaining budget)
-6. View daily statistics and manage your productivity
-7. Access password-protected history for long-term tracking
-
 #### **Environment Switching**
 1. Right-click on any web page
 2. Select "Go to Dev Environment" from context menu
 3. Choose your target environment (localhost, test server, etc.)
 4. Page opens in new tab with same path preserved
 
-## 🍅 Pomodoro Timer System
-
-### **Workday Management**
-- **Custom Workday Hours**: Set your preferred start and end times (e.g., 9:00 AM - 6:00 PM)
-- **Automatic Lunch Calculation**: System calculates recommended lunch time based on workday duration
-- **Flexible Scheduling**: Adjust work patterns to match your schedule
-
-### **Advanced Timer Features**
-- **Persistent Background Timer**: Timer continues running even when extension popup is closed
-- **Auto-Start/Stop**: Automatically manages timer state based on workday schedule
-- **Loop System**: Seamlessly cycles between work sessions and breaks
-- **Big Timer Display**: Large, prominent timer with visual pulse animations during active sessions
-- **Real-Time Synchronization**: Popup UI stays in sync with background timer state
-
-### **Lunch Budget System**
-- **Smart Lunch Tracking**: Tracks lunch time with budget-based controls
-- **Real-Time Budget Display**: Shows remaining lunch minutes on the lunch button
-- **Visual Feedback**: Button colors indicate budget status (green/orange/red/gray)
-- **Overuse Prevention**: Prevents lunch timer when budget is exhausted
-- **Automatic Calculations**: Lunch budget calculated based on workday duration
-
-### **Statistics & History**
-- **Daily Tracking**: Comprehensive statistics for work time, break time, and lunch time
-- **Precise Time Format**: All times displayed in H:MM:SS format for accuracy
-- **Persistent Data**: Statistics saved and accumulated across sessions
-- **Password Protection**: Secure access to historical productivity data
-- **Profile Management**: Multiple timer profiles for different work patterns
-
-### **User Interface**
-- **Intuitive Controls**: Simple start/stop/pause buttons with clear visual states
-- **Status Indicators**: Clear display of current timer state and remaining time
-- **Debug Information**: Built-in debug panel for troubleshooting (show/hide toggle)
-- **Force Refresh**: Manual UI refresh button for resolving sync issues
-- **Responsive Design**: Clean, modern interface optimized for extension popup
-
-## 🌐 Environment Context Menu
+##  Environment Context Menu
 
 ### **Quick Environment Switching**
 - **Right-Click Context Menu**: Access environment switching from any web page
@@ -221,18 +177,6 @@ A powerful Chrome extension that generates intelligent branch names and commit m
 - Integration with history data
 - Customizable template fields
 
-### 🍅 **Pomodoro Tab**
-- **Advanced Workday Management**: Set custom workday hours with automatic lunch calculation
-- **Persistent Timer System**: Timer continues running even when popup is closed
-- **Smart Auto-Start/Stop**: Automatically starts/stops timers based on workday schedule
-- **Lunch Budget System**: Real-time lunch time tracking with budget alerts and overuse prevention
-- **Comprehensive Statistics**: Daily work/break/lunch tracking with H:MM:SS format display
-- **Password-Protected History**: Secure access to historical productivity data
-- **Profile Management**: Multiple timer profiles for different work patterns
-- **Big Timer Display**: Large, easy-to-read timer with pulse animations
-- **Background Synchronization**: Full sync between popup UI and background timer state
-- **Debug Information**: Built-in debugging panel for troubleshooting timer issues
-
 ### ⚙️ **Settings Tab**
 - Gemini API key configuration
 - Model selection (2.0 Flash, 1.5 Flash, 1.5 Pro)
@@ -291,7 +235,6 @@ Follow conventional commit format when possible
     │   ├── history.html
     │   └── history.js
     ├── templates/       # Template system
-    ├── pomodoro/        # Pomodoro timer
     └── settings/        # Configuration
 ```
 
@@ -313,17 +256,12 @@ Follow conventional commit format when possible
 - ✅ **Loading States**: All regeneration buttons properly disabled during API calls
 - ✅ **Error Handling**: Comprehensive error handling for individual regeneration failures
 
-### **v2.1.0** - Advanced Productivity Features
-- ✅ **Advanced Pomodoro Timer**: Complete workday management with persistent background timer
-- ✅ **Lunch Budget System**: Real-time lunch tracking with budget controls and visual feedback
-- ✅ **Statistics & History**: Comprehensive daily tracking with H:MM:SS precision and password protection
-- ✅ **Timer Persistence**: Timer continues running when popup is closed, with full background synchronization
+### **v2.1.0** - Enhanced Development Features
+- ✅ **Time Estimation**: AI-powered task time estimation for Junior/Mid/Senior developers
 - ✅ **Environment Context Menu**: Right-click menu for quick environment switching (dev/test/prod)
 - ✅ **Smart URL Handling**: Preserves paths, queries, and fragments when switching environments
-- ✅ **Auto-Start/Stop**: Intelligent timer management based on workday schedule
-- ✅ **Profile Management**: Multiple timer profiles for different work patterns
-- ✅ **Debug Tools**: Built-in debugging panel and force refresh capabilities
-- ✅ **UI Enhancements**: Big timer display with pulse animations and improved visual feedback
+- ✅ **Enhanced UX**: Improved interface with better visual feedback and responsiveness
+- ✅ **Debug Tools**: Comprehensive error handling and debugging capabilities
 
 ### **v2.0.0** - Modular Architecture
 - ✅ **Complete Modularization**: Separated tabs into individual folders and files
@@ -408,18 +346,16 @@ Follow conventional commit format when possible
 - **History not updating**: Check that the task ID matches between pages
 - **API Key Issues**: Verify key is valid and has quota remaining
 - **Extension not loading**: Try reloading the extension in `chrome://extensions/`
-- **Pomodoro timer not persisting**: Check that background script is running, use "Force Refresh UI" button
-- **Lunch budget not updating**: Verify workday hours are set correctly, restart timer if needed
+- **API rate limits reached**: Wait 1 minute or use fewer requests
 - **Context menu not appearing**: Ensure extension has proper permissions, try reloading the extension
-- **Statistics not accurate**: Check that timer has been running for full sessions, verify time format settings
+- **History not showing**: Verify tasks have been generated and saved properly
 
 ### **Debug Tips**
 - Open DevTools Console to see auto-search logs
 - Check the Network tab for API calls
 - Verify page URLs match the expected patterns
 - Test with known working ClickUp tasks
-- **Pomodoro Debug**: Use the built-in debug panel in Pomodoro tab to view timer state and logs
-- **Timer Issues**: Try "Force Refresh UI" button to resync popup with background timer
+- **Time Estimation**: Check API key settings and rate limits if estimation fails
 - **Context Menu**: Test right-click menu on different websites to verify functionality
 
 ### **Getting Help**
