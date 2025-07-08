@@ -154,7 +154,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Mattermost API integration functions
 async function handleMattermostMeetingStatus(meetingTitle = '') {
     try {
-        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
         const settings = stored.mattermostSettings || {};
         
         if (!settings.googleMeetIntegration) {
@@ -165,12 +165,22 @@ async function handleMattermostMeetingStatus(meetingTitle = '') {
         const token = stored.MMAccessToken || stored.MMAuthToken;
         const userId = stored.MMUserId;
         
-        if (!token || !userId || !settings.serverUrl) {
-            console.log('Mattermost authentication not found');
+        // Check for server URL in multiple places (for compatibility)
+        const serverUrl = settings.serverUrl || stored.serverUrl || 'https://chat.twntydigital.de';
+        
+        console.log('Meeting status authentication check:', { 
+            hasToken: !!token, 
+            hasUserId: !!userId, 
+            serverUrl: serverUrl,
+            googleMeetIntegration: settings.googleMeetIntegration
+        });
+        
+        if (!token || !userId) {
+            console.log('Mattermost authentication not found - missing token or userId');
             return;
         }
 
-        const apiBaseUrl = `${settings.serverUrl}/api/v4`;
+        const apiBaseUrl = `${serverUrl}/api/v4`;
         
         // Update status (online/away/dnd)
         const status = settings.meetingStatus || 'dnd';
@@ -213,17 +223,26 @@ async function handleMattermostMeetingStatus(meetingTitle = '') {
 
 async function handleMattermostClearStatus() {
     try {
-        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
         const settings = stored.mattermostSettings || {};
         const token = stored.MMAccessToken || stored.MMAuthToken;
         const userId = stored.MMUserId;
         
-        if (!token || !userId || !settings.serverUrl) {
-            console.log('Mattermost authentication not found');
+        // Check for server URL in multiple places (for compatibility)
+        const serverUrl = settings.serverUrl || stored.serverUrl || 'https://chat.twntydigital.de';
+        
+        console.log('Clear status authentication check:', { 
+            hasToken: !!token, 
+            hasUserId: !!userId, 
+            serverUrl: serverUrl
+        });
+        
+        if (!token || !userId) {
+            console.log('Mattermost authentication not found - missing token or userId');
             return;
         }
 
-        const apiBaseUrl = `${settings.serverUrl}/api/v4`;
+        const apiBaseUrl = `${serverUrl}/api/v4`;
         
         // Set status back to online
         await fetch(`${apiBaseUrl}/users/me/status`, {
@@ -256,21 +275,30 @@ async function handleMattermostClearStatus() {
 
 async function handleMattermostCustomStatus(emoji, text, sendResponse) {
     try {
-        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
         const settings = stored.mattermostSettings || {};
         
         // Use access token if available, otherwise fall back to auth token
         const token = stored.MMAccessToken || stored.MMAuthToken;
         const userId = stored.MMUserId;
         
-        if (!token || !userId || !settings.serverUrl) {
-            console.log('Mattermost authentication not found');
+        // Check for server URL in multiple places (for compatibility)
+        const serverUrl = settings.serverUrl || stored.serverUrl || 'https://chat.twntydigital.de';
+        
+        console.log('Custom status authentication check:', { 
+            hasToken: !!token, 
+            hasUserId: !!userId, 
+            serverUrl: serverUrl
+        });
+        
+        if (!token || !userId) {
+            console.log('Mattermost authentication not found - missing token or userId');
             sendResponse({ success: false, error: 'Not authenticated' });
             return;
         }
 
         // Set custom status using the correct endpoint
-        const customStatusUrl = `${settings.serverUrl}/api/v4/users/me/status/custom`;
+        const customStatusUrl = `${serverUrl}/api/v4/users/me/status/custom`;
         
         const customStatusResponse = await fetch(customStatusUrl, {
             method: 'PUT',
