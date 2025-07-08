@@ -68,17 +68,33 @@ When you join a Google Meet session, the extension:
 3. Sets a custom status message with your chosen emoji and text
 4. Optionally includes the meeting title in your status
 
-When you leave the meeting:
-1. Automatically resets your status to "Online"
-2. Clears the custom status message
+When you leave the meeting, the extension detects this through multiple methods:
+1. **Normal Meeting End**: Automatically resets your status to "Online" and clears the custom status
+2. **Tab Closing**: Detects when you close the Meet tab and clears status immediately
+3. **Navigation Away**: Monitors URL changes and clears status when leaving the meeting
+4. **Timeout Detection**: Periodically checks for disconnection indicators
+5. **Inactivity Detection**: Clears status after prolonged inactivity on hidden tabs
+6. **Meeting End Messages**: Listens for "Call ended", "Meeting ended", or disconnection messages
 
 ### Meeting Detection
-The extension uses multiple methods to detect active meetings:
+The extension uses multiple methods to detect active meetings and when they end:
+
+**Meeting Start Detection:**
 - Camera/microphone control buttons
 - Meeting controls interface
 - End call button presence
 - URL pattern matching
 - Meeting container elements
+- Participant lists and video elements
+
+**Meeting End Detection:**
+- Tab closing or navigation away from meeting
+- Meeting timeout or disconnection
+- "Call ended" or "Meeting ended" messages
+- URL changes (leaving meeting room)
+- Prolonged inactivity on hidden tabs
+- Network error or connection failure messages
+- Periodic status validation
 
 ### Customization
 You can customize:
@@ -113,6 +129,9 @@ Use the colored status buttons for instant status changes:
 - **Status Update Failures**: The extension uses the `/users/me/status` endpoint with proper `user_id` in the request body
 - **Custom Status Issues**: Custom status updates use the `/users/me/status/custom` endpoint without user_id in the body
 - **Token Authentication**: Personal access tokens are recommended for better security and reliability
+- **Status Not Clearing**: Multiple detection methods ensure status is cleared when meetings end, including tab closing, navigation, timeouts, and disconnection detection
+- **Meeting Detection Issues**: The extension uses 6+ different methods to detect when you're in a meeting and when it ends
+- **Delayed Status Updates**: Status changes may take a few seconds to propagate through Mattermost's system
 
 ## Security Notes
 - Personal access tokens are more secure than passwords

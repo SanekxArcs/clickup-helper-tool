@@ -6,6 +6,10 @@ class GoogleMeetMattermostIntegration {
         this.isInMeeting = false;
         this.meetingTitle = '';
         this.checkInterval = null;
+        this.lastMeetingCheck = Date.now();
+        this.meetingTimeoutId = null;
+        this.beforeUnloadListener = null;
+        this.visibilityChangeListener = null;
         this.initializeIntegration();
     }
 
@@ -47,6 +51,55 @@ class GoogleMeetMattermostIntegration {
                 setTimeout(() => this.checkMeetingStatus(), 1000);
             }
         }).observe(document, { subtree: true, childList: true });
+
+        // Add beforeunload listener for tab/window closing
+        this.beforeUnloadListener = () => {
+            if (this.isInMeeting) {
+                console.log('Tab closing or navigating away, clearing meeting status');
+                this.clearMeetingStatusSync();
+            }
+        };
+        window.addEventListener('beforeunload', this.beforeUnloadListener);
+
+        // Add visibility change listener for tab switching/hiding
+        this.visibilityChangeListener = () => {
+            if (document.visibilityState === 'hidden' && this.isInMeeting) {
+                // Set a timeout to check if we're still in the meeting after a delay
+                this.meetingTimeoutId = setTimeout(() => {
+                    this.checkMeetingStatusAfterHidden();
+                }, 5000); // Check after 5 seconds
+            } else if (document.visibilityState === 'visible' && this.meetingTimeoutId) {
+                // Cancel timeout if tab becomes visible again
+                clearTimeout(this.meetingTimeoutId);
+                this.meetingTimeoutId = null;
+            }
+        };
+        document.addEventListener('visibilitychange', this.visibilityChangeListener);
+
+        // Add focus/blur listeners as backup
+        window.addEventListener('blur', () => {
+            if (this.isInMeeting) {
+                // Start monitoring for meeting end when window loses focus
+                setTimeout(() => {
+                    if (!document.hasFocus() && this.isInMeeting) {
+                        this.checkMeetingStatus();
+                    }
+                }, 3000);
+            }
+        });
+    }
+
+    async checkMeetingStatusAfterHidden() {
+        // This is called when tab has been hidden for a while
+        // Double-check if we're still actually in a meeting
+        const actuallyInMeeting = this.detectMeetingState();
+        
+        if (!actuallyInMeeting && this.isInMeeting) {
+            console.log('Meeting ended while tab was hidden, clearing status');
+            this.isInMeeting = false;
+            this.meetingTitle = '';
+            await this.clearMeetingStatus();
+        }
     }
 
     async checkMeetingStatus() {
@@ -79,30 +132,51 @@ class GoogleMeetMattermostIntegration {
         const cameraButton = document.querySelector('[data-tooltip*="camera" i], [aria-label*="camera" i], [title*="camera" i]');
         
         if (micButton || cameraButton) {
+            this.lastMeetingCheck = Date.now();
             return true;
         }
 
         // Method 2: Check for meeting controls bar
         const controlsBar = document.querySelector('[jsname="lbAIIb"], .qqYZIc, .qowsmv, .kXe4ee');
         if (controlsBar && controlsBar.offsetParent !== null) {
+            this.lastMeetingCheck = Date.now();
             return true;
         }
 
         // Method 3: Check for end call button
         const endCallButton = document.querySelector('[data-tooltip*="call" i], [aria-label*="call" i], button[jsname="CQylAd"]');
         if (endCallButton) {
+            this.lastMeetingCheck = Date.now();
             return true;
         }
 
-        // Method 4: Check URL pattern (backup method)
+        // Method 4: Check for participant list or video elements
+        const participantList = document.querySelector('[data-participant-id], .VfPpkd-rymPhb-ibnC6b, .KvOSCf, .Tmb7Fd');
+        const videoElements = document.querySelectorAll('video');
+        
+        if (participantList || videoElements.length > 0) {
+            this.lastMeetingCheck = Date.now();
+            return true;
+        }
+
+        // Method 5: Check URL pattern and additional elements
         const url = window.location.href;
         const meetingPattern = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/;
         if (meetingPattern.test(url)) {
             // Additional check to see if we're actually in the meeting room
-            const meetingContainer = document.querySelector('[jsname="HlFet"], .crqnQb, .T4LgNb');
-            if (meetingContainer) {
+            const meetingContainer = document.querySelector('[jsname="HlFet"], .crqnQb, .T4LgNb, [data-meeting-state]');
+            const callStarted = document.querySelector('[data-call-started="true"], .ksKsZd, .oX4ic');
+            
+            if (meetingContainer || callStarted) {
+                this.lastMeetingCheck = Date.now();
                 return true;
             }
+        }
+
+        // Method 6: Check if we were recently in a meeting (grace period)
+        const timeSinceLastCheck = Date.now() - this.lastMeetingCheck;
+        if (timeSinceLastCheck < 10000) { // 10 second grace period
+            return true;
         }
 
         return false;
@@ -185,10 +259,43 @@ class GoogleMeetMattermostIntegration {
         }
     }
 
+    // Synchronous version for use in beforeunload
+    clearMeetingStatusSync() {
+        try {
+            // Use sendMessage without await since beforeunload handlers should be quick
+            chrome.runtime.sendMessage({
+                type: 'MATTERMOST_CLEAR_MEETING_STATUS'
+            });
+            console.log('Meeting status cleared (sync)');
+        } catch (error) {
+            console.error('Failed to clear meeting status (sync):', error);
+        }
+    }
+
     cleanup() {
         if (this.checkInterval) {
             clearInterval(this.checkInterval);
             this.checkInterval = null;
+        }
+        
+        if (this.meetingTimeoutId) {
+            clearTimeout(this.meetingTimeoutId);
+            this.meetingTimeoutId = null;
+        }
+
+        if (this.beforeUnloadListener) {
+            window.removeEventListener('beforeunload', this.beforeUnloadListener);
+            this.beforeUnloadListener = null;
+        }
+
+        if (this.visibilityChangeListener) {
+            document.removeEventListener('visibilitychange', this.visibilityChangeListener);
+            this.visibilityChangeListener = null;
+        }
+
+        // Clear meeting status if we were in a meeting
+        if (this.isInMeeting) {
+            this.clearMeetingStatusSync();
         }
     }
 }
@@ -210,9 +317,137 @@ if (document.readyState === 'loading') {
     initializeMeetIntegration();
 }
 
+// Enhanced cleanup and monitoring
+let pageHidden = false;
+let lastActiveTime = Date.now();
+
+// Monitor for page becoming hidden (tab switch, minimize, etc.)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        pageHidden = true;
+        // If we were in a meeting and page becomes hidden, start monitoring for meeting end
+        if (meetIntegration && meetIntegration.isInMeeting) {
+            // Check periodically if the meeting is still active
+            const checkInterval = setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    clearInterval(checkInterval);
+                    pageHidden = false;
+                    return;
+                }
+                
+                // If page has been hidden for more than 30 seconds, assume meeting ended
+                if (Date.now() - lastActiveTime > 30000) {
+                    clearInterval(checkInterval);
+                    if (meetIntegration && meetIntegration.isInMeeting) {
+                        console.log('Meeting likely ended due to prolonged inactivity');
+                        meetIntegration.clearMeetingStatusSync();
+                        meetIntegration.isInMeeting = false;
+                    }
+                }
+            }, 5000);
+        }
+    } else {
+        pageHidden = false;
+        lastActiveTime = Date.now();
+    }
+});
+
+// Monitor for navigation away from meeting
+let currentUrl = window.location.href;
+const urlCheckInterval = setInterval(() => {
+    if (window.location.href !== currentUrl) {
+        const oldUrl = currentUrl;
+        currentUrl = window.location.href;
+        
+        // If we navigated away from a meeting URL, clear status
+        const wasMeetingUrl = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/.test(oldUrl);
+        const isMeetingUrl = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/.test(currentUrl);
+        
+        if (wasMeetingUrl && !isMeetingUrl && meetIntegration && meetIntegration.isInMeeting) {
+            console.log('Navigated away from meeting URL, clearing status');
+            meetIntegration.clearMeetingStatusSync();
+            meetIntegration.isInMeeting = false;
+        }
+    }
+}, 1000);
+
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
+    clearInterval(urlCheckInterval);
     if (meetIntegration) {
         meetIntegration.cleanup();
     }
 });
+
+// Additional monitoring for common meeting end scenarios
+function addMeetingEndDetection() {
+    // Monitor for "Call ended" messages
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const text = node.textContent || '';
+                    if (text.includes('call ended') || 
+                        text.includes('left the meeting') || 
+                        text.includes('meeting ended') ||
+                        text.includes('disconnected')) {
+                        console.log('Meeting end detected via text content');
+                        if (meetIntegration && meetIntegration.isInMeeting) {
+                            setTimeout(() => {
+                                meetIntegration.clearMeetingStatusSync();
+                                meetIntegration.isInMeeting = false;
+                            }, 2000);
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+// Start enhanced meeting end detection after a short delay
+setTimeout(addMeetingEndDetection, 3000);
+
+// Additional periodic check for meeting timeout/disconnection
+setInterval(() => {
+    if (meetIntegration && meetIntegration.isInMeeting) {
+        // Check for disconnection messages or error states
+        const disconnectionIndicators = [
+            'connection lost',
+            'reconnecting',
+            'call ended',
+            'meeting ended',
+            'left the meeting',
+            'disconnected',
+            'connection failed',
+            'network error',
+            'unable to connect'
+        ];
+        
+        const bodyText = document.body.textContent.toLowerCase();
+        const hasDisconnectionIndicator = disconnectionIndicators.some(indicator => 
+            bodyText.includes(indicator)
+        );
+        
+        if (hasDisconnectionIndicator) {
+            console.log('Disconnection indicator found, clearing meeting status');
+            meetIntegration.clearMeetingStatusSync();
+            meetIntegration.isInMeeting = false;
+        }
+        
+        // Check if the current URL is no longer a meeting URL
+        const currentUrl = window.location.href;
+        const isMeetingUrl = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/.test(currentUrl);
+        
+        if (!isMeetingUrl) {
+            console.log('No longer on meeting URL, clearing status');
+            meetIntegration.clearMeetingStatusSync();
+            meetIntegration.isInMeeting = false;
+        }
+    }
+}, 10000); // Check every 10 seconds
