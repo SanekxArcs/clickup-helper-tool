@@ -3,6 +3,7 @@ import { TabManager } from './shared/tab-manager.js';
 import { GenerateTab } from './tabs/generate/generate.js';
 import { HistoryTab } from './tabs/history/history.js';
 import { TemplatesTab } from './tabs/templates/templates.js';
+import { MattermostTab } from './tabs/mattermost/mattermost.js';
 import { SettingsTab } from './tabs/settings/settings.js';
 import { ToolsTab } from './tabs/tools/tools.js';
 import { Utils } from './shared/utils.js';
@@ -51,6 +52,7 @@ class Application {
             this.loadTabHTML('generate'),
             this.loadTabHTML('history'), 
             this.loadTabHTML('templates'),
+            this.loadTabHTML('mattermost'),
             this.loadTabHTML('settings'),
             this.loadTabHTML('tools')
         ]);
@@ -102,6 +104,10 @@ class Application {
         // Initialize Templates tab
         this.tabs.templates = new TemplatesTab();
         this.tabManager.registerTab('templates', this.tabs.templates);
+
+        // Initialize Mattermost tab
+        this.tabs.mattermost = new MattermostTab();
+        this.tabManager.registerTab('mattermost', this.tabs.mattermost);
 
         // Initialize Settings tab
         this.tabs.settings = new SettingsTab();

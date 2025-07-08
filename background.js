@@ -138,8 +138,116 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'TASK_DATA_EXTRACTED') {
         // You can add additional processing here if needed
         console.log('Task data extracted:', request.data);
+    } else if (request.type === 'MATTERMOST_SET_MEETING_STATUS') {
+        // Handle setting meeting status in Mattermost
+        handleMattermostMeetingStatus(request.meetingTitle);
+    } else if (request.type === 'MATTERMOST_CLEAR_MEETING_STATUS') {
+        // Handle clearing meeting status in Mattermost
+        handleMattermostClearStatus();
     }
 });
+
+// Mattermost API integration functions
+async function handleMattermostMeetingStatus(meetingTitle = '') {
+    try {
+        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const settings = stored.mattermostSettings || {};
+        
+        if (!settings.googleMeetIntegration) {
+            console.log('Google Meet integration is disabled');
+            return;
+        }
+
+        const token = stored.MMAccessToken || stored.MMAuthToken;
+        const userId = stored.MMUserId;
+        
+        if (!token || !userId) {
+            console.log('Mattermost authentication not found');
+            return;
+        }
+
+        const apiBaseUrl = 'https://chat.twntydigital.de/api/v4';
+        
+        // Update status (online/away/dnd)
+        const status = settings.meetingStatus || 'dnd';
+        await fetch(`${apiBaseUrl}/users/me/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ 
+                user_id: userId,
+                status: status 
+            })
+        });
+
+        // Update custom status with emoji and text
+        const emoji = settings.meetingEmoji || 'calendar';
+        let text = settings.meetingText || 'In a meeting';
+        
+        if (settings.showMeetingTitle && meetingTitle) {
+            text += `: ${meetingTitle}`;
+        }
+
+        await fetch(`${apiBaseUrl}/users/me/status/custom`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ emoji, text })
+        });
+
+        console.log('Mattermost meeting status set:', { status, emoji, text });
+    } catch (error) {
+        console.error('Failed to set Mattermost meeting status:', error);
+    }
+}
+
+async function handleMattermostClearStatus() {
+    try {
+        const stored = await chrome.storage.sync.get(['MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const token = stored.MMAccessToken || stored.MMAuthToken;
+        const userId = stored.MMUserId;
+        
+        if (!token || !userId) {
+            console.log('Mattermost authentication not found');
+            return;
+        }
+
+        const apiBaseUrl = 'https://chat.twntydigital.de/api/v4';
+        
+        // Set status back to online
+        await fetch(`${apiBaseUrl}/users/me/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ 
+                user_id: userId,
+                status: 'online' 
+            })
+        });
+
+        // Clear custom status
+        await fetch(`${apiBaseUrl}/users/me/status/custom`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        console.log('Mattermost status cleared and set to online');
+    } catch (error) {
+        console.error('Failed to clear Mattermost status:', error);
+    }
+}
 
 // Handle keyboard shortcuts
 chrome.commands.onCommand.addListener(async (command) => {

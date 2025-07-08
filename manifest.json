@@ -11,7 +11,9 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "*://*.twntydigital.de/*",
+    "https://meet.google.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -20,6 +22,10 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"]
+    },
+    {
+      "matches": ["https://meet.google.com/*-*-*"],
+      "js": ["mattermost-meet-integration.js"]
     }
   ],
   "action": {

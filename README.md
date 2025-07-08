@@ -13,6 +13,14 @@ A powerful Chrome extension that generates intelligent branch names and commit m
 - **Individual Regeneration**: Regenerate only branch names or commit messages separately
 - **Smart Variations**: Each regeneration creates fresh content while maintaining consistency
 
+### 💬 **Mattermost Integration**
+- **Status Management**: Update your Mattermost status directly from the extension
+- **Google Meet Auto-Status**: Automatically set "Do Not Disturb" status during Google Meet sessions
+- **Custom Status Messages**: Set personalized status text with emoji support
+- **Meeting Detection**: Smart detection of active Google Meet sessions
+- **Authentication Options**: Support for both password and personal access token authentication
+- **Persistent Sessions**: Stay logged in across browser sessions
+
 ### 🔍 **Smart Auto-Search & Auto-Fill**
 - **ClickUp Integration**: Automatically detects ClickUp task pages and searches history
 - **GitLab Integration**: Extracts task IDs from GitLab merge request pages and branch names
