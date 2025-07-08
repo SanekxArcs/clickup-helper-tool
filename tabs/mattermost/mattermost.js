@@ -89,24 +89,43 @@ export class MattermostTab {
     }
 
     async handleLogin() {
+        const serverUrl = document.getElementById('server-url').value.trim();
         const loginId = document.getElementById('login-id').value.trim();
         const password = document.getElementById('password').value.trim();
         const errorElement = document.getElementById('auth-error');
 
-        if (!loginId || !password) {
-            this.showError('Please enter both email/username and password', errorElement);
+        if (!serverUrl || !loginId || !password) {
+            this.showError('Please enter server URL, email/username and password', errorElement);
+            return;
+        }
+
+        // Validate server URL format
+        try {
+            new URL(serverUrl);
+        } catch (e) {
+            this.showError('Please enter a valid server URL (e.g., https://your-server.com)', errorElement);
             return;
         }
 
         try {
             this.showMessage('Signing in...', 'info');
             
+            // Set the server URL in the API
+            mattermostAPI.setServerUrl(serverUrl);
+            
             const { token, userData } = await mattermostAPI.loginWithCredentials(loginId, password);
 
             await mattermostAPI.storeAuth({
                 MMAuthToken: token,
                 MMUsername: userData.username,
-                MMUserId: userData.id
+                MMUserId: userData.id,
+                serverUrl: serverUrl
+            });
+
+            // Also save server URL to settings for easier access from other tabs
+            await mattermostAPI.storeSettings({
+                ...await mattermostAPI.getSettings(),
+                serverUrl: serverUrl
             });
 
             this.isAuthenticated = true;
@@ -122,23 +141,42 @@ export class MattermostTab {
     }
 
     async handleTokenAuth() {
+        const serverUrl = document.getElementById('token-server-url').value.trim();
         const token = document.getElementById('personal-token').value.trim();
         const errorElement = document.getElementById('auth-error');
 
-        if (!token) {
-            this.showError('Please enter your personal access token', errorElement);
+        if (!serverUrl || !token) {
+            this.showError('Please enter server URL and your personal access token', errorElement);
+            return;
+        }
+
+        // Validate server URL format
+        try {
+            new URL(serverUrl);
+        } catch (e) {
+            this.showError('Please enter a valid server URL (e.g., https://your-server.com)', errorElement);
             return;
         }
 
         try {
             this.showMessage('Connecting with token...', 'info');
             
+            // Set the server URL in the API
+            mattermostAPI.setServerUrl(serverUrl);
+            
             const userData = await mattermostAPI.getCurrentUser(token);
 
             await mattermostAPI.storeAuth({
                 MMAccessToken: token,
                 MMUsername: userData.username,
-                MMUserId: userData.id
+                MMUserId: userData.id,
+                serverUrl: serverUrl
+            });
+
+            // Also save server URL to settings for easier access from other tabs
+            await mattermostAPI.storeSettings({
+                ...await mattermostAPI.getSettings(),
+                serverUrl: serverUrl
             });
 
             this.isAuthenticated = true;

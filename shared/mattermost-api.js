@@ -7,6 +7,15 @@ export class MattermostAPI {
     }
 
     /**
+     * Set the server URL for API calls
+     */
+    setServerUrl(serverUrl) {
+        // Remove trailing slash and add /api/v4
+        const cleanUrl = serverUrl.replace(/\/$/, '');
+        this.apiBaseUrl = `${cleanUrl}/api/v4`;
+    }
+
+    /**
      * Generic API fetch wrapper for Mattermost API calls
      */
     async apiFetch(endpoint, options = {}) {
@@ -149,6 +158,41 @@ export class MattermostAPI {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
+    }
+
+    /**
+     * Simple method to set custom status (for use from history tab)
+     */
+    async setCustomStatus(token, emoji, text) {
+        if (!token) {
+            throw new Error('Missing token');
+        }
+
+        try {
+            // Validate and clean emoji
+            if (emoji) {
+                emoji = emoji.trim().toLowerCase();
+                if (!/^[a-z0-9_]+$/.test(emoji)) {
+                    throw new Error('Emoji must contain only lowercase letters, numbers, and underscores');
+                }
+            }
+
+            console.log(`Setting custom status: "${text}" with emoji: "${emoji}"`);
+            
+            await this.apiFetch('users/me/status/custom', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: {
+                    emoji: emoji || '',
+                    text: text || ''
+                }
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to set custom status:', error);
+            return false;
+        }
     }
 
     /**

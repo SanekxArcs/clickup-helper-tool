@@ -219,6 +219,7 @@ export class HistoryTab {    constructor() {
             <div class="bg-white border related border-gray-200 rounded-lg p-4 mb-4 relative" data-history-index="${realIndex}">                <div class="absolute bottom-1 right-0 left-0 flex justify-between w-full gap-2 px-6">
                     <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-gray-100 transition-all duration-300" data-edit-index="${realIndex}" title="Edit this item">✏️</button>
                     <button class="bg-purple-50 ring-1 ring-purple-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-purple-100 transition-all duration-300 time-estimate-btn ${item.timeEstimation ? 'has-estimation' : ''}" data-time-index="${realIndex}" title="${item.timeEstimation ? 'View time estimation' : 'Generate time estimation'}">⏱️</button>
+                    <button class="bg-green-50 ring-1 ring-green-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-green-100 transition-all duration-300 mattermost-status-btn" data-mattermost-index="${realIndex}" data-task-id="${Utils.escapeAttr(item.taskId)}" title="Set Mattermost status: vscode + task ID">💬</button>
                     <button class="bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-blue-100 transition-all duration-300" data-template-index="${realIndex}" title="Go to Templates">⏭️</button>
                     <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-red-100 transition-all duration-300" data-delete-index="${realIndex}">🗑️</button>
                 </div>
@@ -360,6 +361,15 @@ export class HistoryTab {    constructor() {
                     }
                 });
             }
+        });
+
+        // Add click listeners to Mattermost status buttons
+        const mattermostButtons = this.elements.historyContainer.querySelectorAll('button[data-mattermost-index]');
+        mattermostButtons.forEach(button => {
+            button.addEventListener('click', async () => {
+                const taskId = button.getAttribute('data-task-id');
+                await this.setMattermostStatus(taskId, button);
+            });
         });
 
         // Add click listeners to text areas for easy selection
@@ -885,5 +895,91 @@ export class HistoryTab {    constructor() {
             clearTimeout(hideTimeout);
         };
         document.addEventListener('scroll', hideOnScroll);
+    }
+
+    async setMattermostStatus(taskId, button) {
+        try {
+            // Store original button content
+            const originalContent = button.innerHTML;
+            const originalTitle = button.title;
+            
+            // Show loading state
+            button.innerHTML = '⏳';
+            button.title = 'Setting Mattermost status...';
+            button.disabled = true;
+            
+            // Import and use the Mattermost API directly
+            const { mattermostAPI } = await import('../../shared/mattermost-api.js');
+            
+            // Get stored authentication and settings
+            const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
+            const settings = stored.mattermostSettings || {};
+            const token = stored.MMAccessToken || stored.MMAuthToken;
+            const userId = stored.MMUserId;
+            
+            // Check for server URL in multiple places (for compatibility)
+            const serverUrl = settings.serverUrl || stored.serverUrl || 'https://chat.twntydigital.de';
+            
+            console.log('Authentication check:', { 
+                hasToken: !!token, 
+                hasUserId: !!userId, 
+                serverUrl: serverUrl,
+                storedKeys: Object.keys(stored)
+            });
+            
+            if (!token) {
+                throw new Error('No authentication token found. Please authenticate in the Mattermost tab first.');
+            }
+            
+            if (!userId) {
+                throw new Error('No user ID found. Please re-authenticate in the Mattermost tab.');
+            }
+            
+            // Set the server URL in the API
+            mattermostAPI.setServerUrl(serverUrl);
+            
+            // Set custom status using the Mattermost API
+            const success = await mattermostAPI.setCustomStatus(token, 'vscode', taskId);
+            
+            // Restore button state
+            button.innerHTML = originalContent;
+            button.title = originalTitle;
+            button.disabled = false;
+            
+            if (success) {
+                Utils.showNotification(`Mattermost status set: 💻 ${taskId}`, 'success');
+                
+                // Temporarily change button appearance to show success
+                button.classList.remove('bg-green-50', 'ring-green-400', 'hover:bg-green-100');
+                button.classList.add('bg-emerald-50', 'ring-emerald-400', 'hover:bg-emerald-100');
+                button.innerHTML = '✅';
+                button.title = `Status set: vscode ${taskId}`;
+                
+                // Revert after 2 seconds
+                setTimeout(() => {
+                    button.classList.remove('bg-emerald-50', 'ring-emerald-400', 'hover:bg-emerald-100');
+                    button.classList.add('bg-green-50', 'ring-green-400', 'hover:bg-green-100');
+                    button.innerHTML = originalContent;
+                    button.title = originalTitle;
+                }, 2000);
+            } else {
+                Utils.showNotification('Failed to set Mattermost status. Check your connection and settings.', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error setting Mattermost status:', error);
+            
+            // Restore button state
+            button.innerHTML = '💬';
+            button.title = 'Set Mattermost status: vscode + task ID';
+            button.disabled = false;
+            
+            // Show helpful error message
+            if (error.message.includes('authentication') || error.message.includes('token') || error.message.includes('user ID')) {
+                Utils.showNotification('Please authenticate with Mattermost first (go to Mattermost tab)', 'error');
+            } else {
+                Utils.showNotification('Error setting Mattermost status: ' + error.message, 'error');
+            }
+        }
     }
 }

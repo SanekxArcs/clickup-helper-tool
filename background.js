@@ -144,6 +144,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.type === 'MATTERMOST_CLEAR_MEETING_STATUS') {
         // Handle clearing meeting status in Mattermost
         handleMattermostClearStatus();
+    } else if (request.type === 'MATTERMOST_SET_CUSTOM_STATUS') {
+        // Handle setting custom status in Mattermost
+        handleMattermostCustomStatus(request.emoji, request.text, sendResponse);
+        return true; // Indicate we will send a response asynchronously
     }
 });
 
@@ -161,12 +165,12 @@ async function handleMattermostMeetingStatus(meetingTitle = '') {
         const token = stored.MMAccessToken || stored.MMAuthToken;
         const userId = stored.MMUserId;
         
-        if (!token || !userId) {
+        if (!token || !userId || !settings.serverUrl) {
             console.log('Mattermost authentication not found');
             return;
         }
 
-        const apiBaseUrl = 'https://chat.twntydigital.de/api/v4';
+        const apiBaseUrl = `${settings.serverUrl}/api/v4`;
         
         // Update status (online/away/dnd)
         const status = settings.meetingStatus || 'dnd';
@@ -209,16 +213,17 @@ async function handleMattermostMeetingStatus(meetingTitle = '') {
 
 async function handleMattermostClearStatus() {
     try {
-        const stored = await chrome.storage.sync.get(['MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const settings = stored.mattermostSettings || {};
         const token = stored.MMAccessToken || stored.MMAuthToken;
         const userId = stored.MMUserId;
         
-        if (!token || !userId) {
+        if (!token || !userId || !settings.serverUrl) {
             console.log('Mattermost authentication not found');
             return;
         }
 
-        const apiBaseUrl = 'https://chat.twntydigital.de/api/v4';
+        const apiBaseUrl = `${settings.serverUrl}/api/v4`;
         
         // Set status back to online
         await fetch(`${apiBaseUrl}/users/me/status`, {
@@ -246,6 +251,50 @@ async function handleMattermostClearStatus() {
         console.log('Mattermost status cleared and set to online');
     } catch (error) {
         console.error('Failed to clear Mattermost status:', error);
+    }
+}
+
+async function handleMattermostCustomStatus(emoji, text, sendResponse) {
+    try {
+        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId']);
+        const settings = stored.mattermostSettings || {};
+        
+        // Use access token if available, otherwise fall back to auth token
+        const token = stored.MMAccessToken || stored.MMAuthToken;
+        const userId = stored.MMUserId;
+        
+        if (!token || !userId || !settings.serverUrl) {
+            console.log('Mattermost authentication not found');
+            sendResponse({ success: false, error: 'Not authenticated' });
+            return;
+        }
+
+        // Set custom status using the correct endpoint
+        const customStatusUrl = `${settings.serverUrl}/api/v4/users/me/status/custom`;
+        
+        const customStatusResponse = await fetch(customStatusUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                emoji: emoji,
+                text: text
+            })
+        });
+
+        if (!customStatusResponse.ok) {
+            throw new Error(`Custom status request failed: ${customStatusResponse.status}`);
+        }
+
+        console.log('Mattermost custom status set:', { emoji, text });
+        sendResponse({ success: true });
+        
+    } catch (error) {
+        console.error('Failed to set Mattermost custom status:', error);
+        sendResponse({ success: false, error: error.message });
     }
 }
 
