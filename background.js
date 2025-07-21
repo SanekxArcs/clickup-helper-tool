@@ -1,6 +1,19 @@
 // Background script for Chrome extension
+let activeModeTimer = null;
+
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Branch & Commit Helper extension installed');
+    
+    // Initialize Active Mode settings
+    chrome.storage.sync.get(['activeModeEnabled', 'activeModeInterval', 'statusDuration'], (result) => {
+        if (result.activeModeEnabled === undefined) {
+            chrome.storage.sync.set({
+                activeModeEnabled: false,
+                activeModeInterval: 5,
+                statusDuration: 0
+            });
+        }
+    });
     
     // Create context menu for task extraction
     chrome.contextMenus.create({
@@ -148,6 +161,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Handle setting custom status in Mattermost
         handleMattermostCustomStatus(request.emoji, request.text, sendResponse);
         return true; // Indicate we will send a response asynchronously
+    } else if (request.action === 'toggleActiveMode') {
+        // Handle Active Mode toggle
+        if (request.enabled) {
+            startActiveMode(request.interval);
+        } else {
+            stopActiveMode();
+        }
     }
 });
 
@@ -476,3 +496,93 @@ async function copyToClipboard(text) {
         console.error('Failed to copy to clipboard:', error);
     }
 }
+
+// Active Mode functions
+function startActiveMode(interval) {
+    stopActiveMode(); // Clear any existing timer
+    
+    const intervalMs = interval * 60 * 1000; // Convert minutes to milliseconds
+    
+    // Function to update status
+    const updateStatus = async () => {
+        try {
+            const result = await chrome.storage.sync.get(['MMUserId', 'MMAuthToken', 'MMAccessToken', 'activeModeEnabled', 'mattermostSettings']);
+            const { MMUserId, MMAuthToken, MMAccessToken, activeModeEnabled, mattermostSettings } = result;
+            
+            console.log('Active Mode: Checking status update...', { 
+                hasUserId: !!MMUserId, 
+                hasToken: !!(MMAccessToken || MMAuthToken), 
+                activeModeEnabled 
+            });
+            
+            // Check if active mode is still enabled
+            if (!activeModeEnabled) {
+                console.log('Active Mode: Disabled, stopping timer');
+                stopActiveMode();
+                return;
+            }
+            
+            const token = MMAccessToken || MMAuthToken;
+            const settings = mattermostSettings || {};
+            const serverUrl = settings.serverUrl || 'https://chat.twntydigital.de';
+            
+            if (token && MMUserId) {
+                console.log('Active Mode: Updating status to online...');
+                // Set status to online
+                const response = await fetch(`${serverUrl}/api/v4/users/me/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        user_id: MMUserId,
+                        status: 'online'
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('Active Mode: Status successfully set to online');
+                } else {
+                    console.error('Active Mode: Failed to set status to online, response:', response.status, response.statusText);
+                }
+            } else {
+                console.error('Active Mode: Missing authentication data', { hasToken: !!token, hasUserId: !!MMUserId });
+            }
+        } catch (error) {
+            console.error('Active Mode error:', error);
+        }
+    };
+    
+    // Set up the interval timer
+    activeModeTimer = setInterval(updateStatus, intervalMs);
+    
+    // Trigger the first update immediately
+    updateStatus();
+    
+    console.log(`Active Mode started with ${interval} minute intervals (${intervalMs}ms)`);
+}
+
+function stopActiveMode() {
+    if (activeModeTimer) {
+        clearInterval(activeModeTimer);
+        activeModeTimer = null;
+        console.log('Active Mode stopped');
+    }
+}
+
+// Initialize Active Mode on startup and install/reload
+async function initializeActiveMode() {
+    try {
+        const result = await chrome.storage.sync.get(['activeModeEnabled', 'activeModeInterval']);
+        if (result.activeModeEnabled) {
+            startActiveMode(result.activeModeInterval || 5);
+        }
+    } catch (error) {
+        console.error('Error initializing Active Mode:', error);
+    }
+}
+
+chrome.runtime.onStartup.addListener(initializeActiveMode);
+chrome.runtime.onInstalled.addListener(initializeActiveMode);

@@ -1,6 +1,5 @@
 import {
   authenticateUser,
-  getUserOptions,
   updateUserActiveStatus,
   updateUserStatus,
   updateUserCustomStatus,
@@ -9,12 +8,55 @@ import {
   handleAuthError
 } from "./helpers.js";
 
+const getUserOptions = () => {
+    chrome.storage.sync.get({
+        userStatus: 'dnd',
+        userStatusText: "I'm on a meet",
+        userEmoji: 'calendar',
+        showMeetingTitle: false,
+        activeModeEnabled: false,
+        activeModeInterval: 5,
+        statusDuration: 0
+    }, function (items) {
+        const {userStatus, userStatusText, userEmoji, showMeetingTitle, activeModeEnabled, activeModeInterval, statusDuration} = items
+
+        const $userStatus = document.getElementById('user-status')
+        const $userStatusText = document.getElementById('user-status-text')
+        const $userEmoji = document.getElementById('emoji')
+        const $showMeetingTitle = document.getElementById('show-meeting-title')
+        const $activeModeToggle = document.getElementById('active-mode-toggle')
+        const $activeModeInterval = document.getElementById('active-mode-interval')
+        const $statusDuration = document.getElementById('status-duration')
+
+        if ($userStatus) $userStatus.value = userStatus
+        if ($userStatusText) $userStatusText.value = userStatusText
+        if ($userEmoji && userEmoji) {
+            $userEmoji.value = userEmoji
+        }
+        if ($showMeetingTitle) $showMeetingTitle.checked = showMeetingTitle
+        if ($activeModeToggle) {
+            $activeModeToggle.checked = activeModeEnabled
+            toggleActiveModeInterval(activeModeEnabled)
+        }
+        if ($activeModeInterval) $activeModeInterval.value = activeModeInterval
+        if ($statusDuration) $statusDuration.value = statusDuration
+    })
+}
+
+const toggleActiveModeInterval = (show) => {
+  const $activeModeIntervalGroup = document.getElementById('active-mode-interval-group')
+  if ($activeModeIntervalGroup) {
+    $activeModeIntervalGroup.style.display = show ? 'block' : 'none'
+  }
+}
+
 const loadHandler = () => {
   const $loader = document.getElementById('loader');
   if ($loader) $loader.style.display = 'flex';
   const onAuthSuccess = () => {
     try {
       loadUserActiveStatus();
+      loadActiveModeStatus();
     } catch (error) {}
   };
   authenticateUser(onAuthSuccess);
@@ -132,12 +174,18 @@ const saveOptions = async () => {
   const text = document.getElementById('user-status-text').value
   const emoji = document.getElementById('emoji').value.trim()
   const showMeetingTitle = document.getElementById('show-meeting-title').checked
+  const activeModeEnabled = document.getElementById('active-mode-toggle')?.checked || false
+  const activeModeInterval = parseInt(document.getElementById('active-mode-interval')?.value) || 5
+  const statusDuration = parseInt(document.getElementById('status-duration')?.value) || 0
   const $button = document.getElementById('save-options-button')
   chrome.storage.sync.set({
     userStatus: status,
     userStatusText: text,
     userEmoji: emoji,
-    showMeetingTitle: showMeetingTitle
+    showMeetingTitle: showMeetingTitle,
+    activeModeEnabled: activeModeEnabled,
+    activeModeInterval: activeModeInterval,
+    statusDuration: statusDuration
   }, () => {
     $button.innerText = 'Saved'
     setTimeout(() => ($button.textContent = 'Save'), 750)
@@ -264,6 +312,7 @@ const updateStatusHandler = async () => {
 const updateCustomStatusHandler = async () => {
   const statusText = document.getElementById('user-status-text').value
   let emoji = document.getElementById('emoji').value.trim()
+  const duration = parseInt(document.getElementById('status-duration').value) || 0
   const messageElement = document.getElementById('status-update-message')
   try {
     messageElement.textContent = 'Updating custom status...'
@@ -280,7 +329,7 @@ const updateCustomStatusHandler = async () => {
       messageElement.style.color = '#E74C3C'
       return
     }
-    const result = await updateUserCustomStatus(MMUserId, statusText, emoji, token)
+    const result = await updateUserCustomStatus(MMUserId, statusText, emoji, token, duration)
     if (result.error) {
       messageElement.textContent = `Error: ${result.error}`
       messageElement.style.color = '#E74C3C'
@@ -289,7 +338,8 @@ const updateCustomStatusHandler = async () => {
       }
       return
     }
-    messageElement.textContent = `Custom status updated successfully`
+    const durationText = duration > 0 ? ` for ${duration} minutes` : ''
+    messageElement.textContent = `Custom status updated successfully${durationText}`
     messageElement.style.color = '#3EDC99'
     setTimeout(() => {
       messageElement.textContent = ''
@@ -337,6 +387,43 @@ const resetStatusHandler = async () => {
   }
 };
 
+const loadActiveModeStatus = () => {
+  chrome.storage.sync.get(['activeModeEnabled'], function(items) {
+    const activeModeToggle = document.getElementById('active-mode-toggle')
+    const activeModeMessage = document.getElementById('active-mode-message')
+    if (activeModeToggle && activeModeMessage) {
+      updateActiveModeMessage(items.activeModeEnabled || false)
+    }
+  })
+}
+
+const updateActiveModeMessage = (isEnabled) => {
+  const messageElement = document.getElementById('active-mode-message')
+  if (messageElement) {
+    messageElement.textContent = isEnabled ? 'Active mode is running' : 'Active mode is stopped'
+    messageElement.style.color = isEnabled ? '#3EDC99' : '#E74C3C'
+  }
+}
+
+const activeModeToggleHandler = async () => {
+  const activeModeToggle = document.getElementById('active-mode-toggle')
+  const isEnabled = activeModeToggle.checked
+  const messageElement = document.getElementById('active-mode-message')
+  
+  toggleActiveModeInterval(isEnabled)
+  
+  chrome.storage.sync.set({ activeModeEnabled: isEnabled }, () => {
+    updateActiveModeMessage(isEnabled)
+    
+    // Send message to background script to start/stop active mode
+    chrome.runtime.sendMessage({
+      action: 'toggleActiveMode',
+      enabled: isEnabled,
+      interval: parseInt(document.getElementById('active-mode-interval').value) || 5
+    })
+  })
+}
+
 const addSafeEventListener = (elementId, eventType, handler) => {
   const element = document.getElementById(elementId);
   if (element) {
@@ -351,6 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
   addSafeEventListener('personal-token-button', 'click', personalTokenSubmitHandler);
   addSafeEventListener('save-options-button', 'click', saveOptions);
   addSafeEventListener('active-status-toggle', 'change', activeStatusToggleHandler);
+  addSafeEventListener('active-mode-toggle', 'change', activeModeToggleHandler);
   addSafeEventListener('update-status-button', 'click', updateStatusHandler);
   addSafeEventListener('update-custom-status-button', 'click', updateCustomStatusHandler);
   addSafeEventListener('reset-status-button', 'click', resetStatusHandler);

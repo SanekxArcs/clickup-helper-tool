@@ -5,6 +5,8 @@ export class MattermostTab {
     constructor() {
         this.isAuthenticated = false;
         this.currentUser = null;
+        this.activeModeCountdownTimer = null;
+        this.nextUpdateTime = null;
         this.initialize();
     }
 
@@ -13,6 +15,9 @@ export class MattermostTab {
             await this.checkAuthentication();
             this.setupEventListeners();
             this.loadSavedSettings();
+            
+            // Load active mode status
+            this.loadActiveModeStatus();
         } catch (error) {
             console.error('Failed to initialize Mattermost tab:', error);
         }
@@ -40,6 +45,12 @@ export class MattermostTab {
         document.getElementById('google-meet-integration')?.addEventListener('change', (e) => {
             document.getElementById('meet-settings').classList.toggle('hidden', !e.target.checked);
         });
+
+        // Active Mode toggle
+        const activeModeToggle = document.getElementById('active-mode-toggle');
+        if (activeModeToggle) {
+            activeModeToggle.addEventListener('change', this.activeModeToggleHandler.bind(this));
+        }
 
         // Settings buttons
         document.getElementById('save-settings-btn')?.addEventListener('click', () => this.saveSettings());
@@ -250,13 +261,20 @@ export class MattermostTab {
         try {
             const emoji = document.getElementById('emoji-input').value.trim() || 'calendar';
             const text = document.getElementById('status-text-input').value.trim();
+            const durationInput = document.getElementById('status-duration-input');
+            const duration = durationInput ? parseInt(durationInput.value) || 0 : 0;
 
             const stored = await mattermostAPI.getStoredAuth();
             const token = stored.MMAccessToken || stored.MMAuthToken;
             const userId = stored.MMUserId;
 
-            await mattermostAPI.updateCustomStatus(userId, emoji, text, token);
-            this.showMessage('Custom status updated successfully', 'success');
+            await mattermostAPI.updateCustomStatus(userId, emoji, text, token, duration);
+            
+            let message = 'Custom status updated successfully';
+            if (duration > 0) {
+                message += ` (Duration: ${duration} minutes)`;
+            }
+            this.showMessage(message, 'success');
         } catch (error) {
             console.error('Failed to update custom status:', error);
             this.showMessage('Failed to update custom status', 'error');
@@ -297,7 +315,13 @@ export class MattermostTab {
                 meetingText: document.getElementById('meeting-text').value.trim() || 'In a meeting'
             };
 
+            // Save status duration separately
+            const durationInput = document.getElementById('status-duration-input');
+            const statusDuration = durationInput ? parseInt(durationInput.value) || 0 : 0;
+            
             await mattermostAPI.storeSettings(settings);
+            await chrome.storage.sync.set({ statusDuration });
+            
             this.showMessage('Settings saved successfully', 'success');
         } catch (error) {
             console.error('Failed to save settings:', error);
@@ -308,6 +332,7 @@ export class MattermostTab {
     async loadSavedSettings() {
         try {
             const settings = await mattermostAPI.getSettings();
+            const storageData = await chrome.storage.sync.get(['statusDuration']);
 
             // Load saved values
             if (settings.emoji) document.getElementById('emoji-input').value = settings.emoji;
@@ -320,6 +345,12 @@ export class MattermostTab {
             if (settings.meetingStatus) document.getElementById('meeting-status').value = settings.meetingStatus;
             if (settings.meetingEmoji) document.getElementById('meeting-emoji').value = settings.meetingEmoji;
             if (settings.meetingText) document.getElementById('meeting-text').value = settings.meetingText;
+            
+            // Load status duration
+            const durationInput = document.getElementById('status-duration-input');
+            if (durationInput && storageData.statusDuration !== undefined) {
+                durationInput.value = storageData.statusDuration;
+            }
         } catch (error) {
             console.error('Failed to load saved settings:', error);
         }
@@ -417,6 +448,149 @@ export class MattermostTab {
                 messageEl.parentNode.removeChild(messageEl);
             }
         }, 5000);
+    }
+
+    async loadActiveModeStatus() {
+        try {
+            const result = await chrome.storage.sync.get(['activeModeEnabled', 'activeModeInterval']);
+            const toggle = document.getElementById('active-mode-toggle');
+            const settings = document.getElementById('active-mode-settings');
+            const intervalInput = document.getElementById('active-mode-interval');
+            
+            if (toggle) {
+                toggle.checked = result.activeModeEnabled || false;
+            }
+            
+            if (intervalInput) {
+                intervalInput.value = result.activeModeInterval || 5;
+            }
+            
+            if (settings) {
+                settings.classList.toggle('hidden', !result.activeModeEnabled);
+            }
+            
+            this.updateActiveModeMessage(result.activeModeEnabled);
+            
+            // Start countdown timer if Active Mode is already enabled
+            if (result.activeModeEnabled) {
+                this.startActiveModeCountdown();
+            }
+        } catch (error) {
+            console.error('Error loading active mode status:', error);
+        }
+    }
+    
+    updateActiveModeMessage(enabled) {
+        const statusDiv = document.getElementById('active-mode-status');
+        if (statusDiv) {
+            statusDiv.classList.toggle('hidden', !enabled);
+        }
+        
+        if (enabled) {
+            this.startActiveModeCountdown();
+        } else {
+            this.stopActiveModeCountdown();
+        }
+    }
+    
+    async activeModeToggleHandler() {
+        try {
+            const toggle = document.getElementById('active-mode-toggle');
+            const settings = document.getElementById('active-mode-settings');
+            const intervalInput = document.getElementById('active-mode-interval');
+            
+            const enabled = toggle.checked;
+            const interval = parseInt(intervalInput.value) || 5;
+            
+            // Show/hide settings
+            if (settings) {
+                settings.classList.toggle('hidden', !enabled);
+            }
+            
+            // Save settings
+            await chrome.storage.sync.set({
+                activeModeEnabled: enabled,
+                activeModeInterval: interval
+            });
+            
+            // Send message to background script
+            chrome.runtime.sendMessage({
+                action: 'toggleActiveMode',
+                enabled: enabled,
+                interval: interval
+            });
+            
+            this.updateActiveModeMessage(enabled);
+            
+            const message = enabled ? 
+                `Active Mode enabled (${interval} minute intervals)` : 
+                'Active Mode disabled';
+            this.showMessage(message, 'success');
+        } catch (error) {
+            console.error('Error toggling active mode:', error);
+            this.showMessage('Error updating active mode', 'error');
+        }
+    }
+    
+    async startActiveModeCountdown() {
+        try {
+            const result = await chrome.storage.sync.get(['activeModeInterval']);
+            const interval = result.activeModeInterval || 5;
+            
+            // Calculate next update time (background script triggers immediately, then waits for interval)
+            this.nextUpdateTime = new Date(Date.now() + (interval * 60 * 1000));
+            
+            // Clear existing timer
+            if (this.activeModeCountdownTimer) {
+                clearInterval(this.activeModeCountdownTimer);
+            }
+            
+            // Start countdown timer (update every second)
+            this.activeModeCountdownTimer = setInterval(() => {
+                this.updateCountdownDisplay();
+            }, 1000);
+            
+            // Initial display update
+            this.updateCountdownDisplay();
+            
+            console.log('Frontend countdown timer started, next update at:', this.nextUpdateTime);
+        } catch (error) {
+            console.error('Error starting active mode countdown:', error);
+        }
+    }
+    
+    stopActiveModeCountdown() {
+        if (this.activeModeCountdownTimer) {
+            clearInterval(this.activeModeCountdownTimer);
+            this.activeModeCountdownTimer = null;
+        }
+        this.nextUpdateTime = null;
+        
+        const timerElement = document.getElementById('active-mode-timer');
+        if (timerElement) {
+            timerElement.textContent = '--:--';
+        }
+    }
+    
+    updateCountdownDisplay() {
+        const timerElement = document.getElementById('active-mode-timer');
+        if (!timerElement || !this.nextUpdateTime) return;
+        
+        const now = new Date();
+        const timeLeft = this.nextUpdateTime - now;
+        
+        if (timeLeft <= 0) {
+            // Timer expired, restart countdown
+            this.startActiveModeCountdown();
+            return;
+        }
+        
+        // Format time as MM:SS
+        const minutes = Math.floor(timeLeft / 60000);
+        const seconds = Math.floor((timeLeft % 60000) / 1000);
+        const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        timerElement.textContent = formattedTime;
     }
 
     showError(message, errorElement) {

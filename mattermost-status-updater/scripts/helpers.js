@@ -226,9 +226,10 @@ export const updateUserStatus = async (userId, status, token) => {
  * @param {string} text - The status text to set
  * @param {string} emoji - The emoji to set (e.g., "calendar")
  * @param {string} token - The authentication token.
+ * @param {number} duration - Duration in minutes (0 = no expiration)
  * @returns {Promise<object>} - Response data or error
  */
-export const updateUserCustomStatus = async (userId, text, emoji, token) => {
+export const updateUserCustomStatus = async (userId, text, emoji, token, duration = 0) => {
     if (!userId || !token) {
         return { error: 'Missing userId or token' };
     }
@@ -248,7 +249,7 @@ export const updateUserCustomStatus = async (userId, text, emoji, token) => {
             return { error: 'Emoji must contain only lowercase letters, numbers, and underscores' };
         }
 
-        console.log(`Updating user custom status: ${text} with emoji: ${emoji}`);
+        console.log(`Updating user custom status: ${text} with emoji: ${emoji} for ${duration} minutes`);
         
         // Per the API documentation, the body should be a flat object.
         // The /me endpoint implies the user, so user_id is not needed in the body.
@@ -256,6 +257,12 @@ export const updateUserCustomStatus = async (userId, text, emoji, token) => {
             emoji: emoji,
             text: text || ""
         };
+        
+        // Add expiration time if duration is specified
+        if (duration > 0) {
+            const expiresAt = new Date(Date.now() + duration * 60 * 1000).toISOString();
+            requestBody.expires_at = expiresAt;
+        }
 
         const data = await apiFetch('users/me/status/custom', {
             method: 'PUT',

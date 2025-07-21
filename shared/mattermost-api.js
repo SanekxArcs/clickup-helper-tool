@@ -124,7 +124,7 @@ export class MattermostAPI {
     /**
      * Update custom status with emoji and text
      */
-    async updateCustomStatus(userId, emoji, text, token) {
+    async updateCustomStatus(userId, emoji, text, token, duration = 0) {
         if (!token) {
             throw new Error('Missing token');
         }
@@ -137,18 +137,26 @@ export class MattermostAPI {
             }
         }
 
-        console.log(`Updating custom status: "${text}" with emoji: "${emoji}"`);
+        console.log(`Updating custom status: "${text}" with emoji: "${emoji}" for ${duration} minutes`);
         
         // Record custom status change in history
-        await this.recordStatusHistory('custom', emoji || '', text || '');
+        await this.recordStatusHistory('custom', emoji || '', text || '', duration);
+        
+        const customStatus = {
+            emoji: emoji || '',
+            text: text || ''
+        };
+        
+        // Set duration and expiration if specified
+        if (duration > 0) {
+            customStatus.duration = 'date_and_time';
+            customStatus.expires_at = new Date(Date.now() + duration * 60 * 1000).toISOString();
+        }
         
         return this.apiFetch('users/me/status/custom', {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` },
-            body: {
-                emoji: emoji || '',
-                text: text || ''
-            }
+            body: JSON.stringify(customStatus)
         });
     }
 
@@ -356,7 +364,7 @@ export class MattermostAPI {
     /**
      * Record a status change in history
      */
-    async recordStatusHistory(status, emoji = '', text = '') {
+    async recordStatusHistory(status, emoji = '', text = '', statusDuration = 0) {
         try {
             const history = await this.getStatusHistory();
             const now = new Date();
@@ -376,6 +384,7 @@ export class MattermostAPI {
                 status: status,
                 emoji: emoji,
                 text: text,
+                statusDuration: statusDuration,
                 startTime: now.toISOString(),
                 endTime: null,
                 duration: null

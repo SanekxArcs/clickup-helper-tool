@@ -166,6 +166,21 @@
       <small class="form-text text-muted d-block">Toggle to set your account as active or inactive</small>
       <span id="active-status-message" class="text-muted"></span>
     </div>
+    
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="active-mode-toggle" name="active-mode-toggle">
+      <label class="form-check-label" for="active-mode-toggle">
+        Active Mode
+      </label>
+      <small class="form-text text-muted d-block">Automatically set status to online every few minutes</small>
+      <span id="active-mode-message" class="text-muted"></span>
+    </div>
+    
+    <div class="form-group mb-3" id="active-mode-interval-group" style="display: none;">
+      <label for="active-mode-interval">Active Mode Interval (minutes)</label>
+      <input type="number" class="form-control" id="active-mode-interval" name="active-mode-interval" value="5" min="1" max="60">
+      <small class="form-text text-muted">How often to set status to online (1-60 minutes)</small>
+    </div>
     <button id="log-out-button" class="btn btn-logout btn-block mb-4">Log out</button>
   </div>
   <hr/>
@@ -190,6 +205,12 @@
     <div class="form-group">
       <label for="user-status-text">Which text you want to set</label>
       <input type="text" class="form-control" id="user-status-text" name="user-status-text" value="I'm on a meet">
+    </div>
+
+    <div class="form-group">
+      <label for="status-duration">Custom Status Duration (minutes)</label>
+      <input type="number" class="form-control" id="status-duration" name="status-duration" value="0" min="0" max="1440">
+      <small class="form-text text-muted">Set duration for custom status (0 = no expiration, max 24 hours)</small>
     </div>
 
     <div class="form-check">
