@@ -210,10 +210,111 @@
                 <button id="test-connection-btn" class="bg-gray-600 text-white py-3 px-4 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
                     Test Connection
                 </button>
+                <button id="history-btn" class="bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors">
+                    History
+                </button>
             </div>
         </div>
 
         <!-- Status Messages -->
         <div id="status-messages" class="mt-4"></div>
+    </div>
+
+    <!-- Status History Modal -->
+    <div id="history-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Status Change History</h3>
+                <button id="close-history-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-1 overflow-hidden flex flex-col">
+                <!-- History Controls -->
+                <div class="p-4 border-b border-gray-200 bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-600">
+                            <span id="history-count">0</span> status changes recorded
+                        </div>
+                        <button id="clear-history-btn" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors text-sm">
+                            Clear All History
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History List -->
+                <div class="flex-1 overflow-y-auto p-4">
+                    <div id="history-list" class="space-y-3">
+                        <!-- History entries will be populated here -->
+                    </div>
+                    <div id="history-empty" class="text-center py-12 text-gray-500 hidden">
+                        <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-lg font-medium text-gray-400">No status history yet</p>
+                        <p class="text-sm text-gray-400 mt-1">Status changes will appear here as you use the extension</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit History Entry Modal -->
+    <div id="edit-history-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800">Edit History Entry</h3>
+                <button id="close-edit-modal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6">
+                <form id="edit-history-form" class="space-y-4">
+                    <input type="hidden" id="edit-entry-id">
+                    
+                    <div>
+                        <label for="edit-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="edit-status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="online">Online</option>
+                            <option value="away">Away</option>
+                            <option value="dnd">Do Not Disturb</option>
+                            <option value="offline">Offline</option>
+                            <option value="custom">Custom Status</option>
+                        </select>
+                    </div>
+                    
+                    <div id="edit-custom-fields" class="space-y-3 hidden">
+                        <div>
+                            <label for="edit-emoji" class="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+                            <input type="text" id="edit-emoji" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="calendar">
+                        </div>
+                        
+                        <div>
+                            <label for="edit-text" class="block text-sm font-medium text-gray-700 mb-1">Status Text</label>
+                            <input type="text" id="edit-text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter status text">
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-4">
+                        <button type="submit" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                            Save Changes
+                        </button>
+                        <button type="button" id="cancel-edit" class="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>

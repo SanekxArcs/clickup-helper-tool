@@ -107,6 +107,10 @@ export class MattermostAPI {
         }
 
         console.log(`Updating user status to: ${status}`);
+        
+        // Record status change in history before making the API call
+        await this.recordStatusHistory(status, '', '');
+        
         return this.apiFetch('users/me/status', {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` },
@@ -134,6 +138,9 @@ export class MattermostAPI {
         }
 
         console.log(`Updating custom status: "${text}" with emoji: "${emoji}"`);
+        
+        // Record custom status change in history
+        await this.recordStatusHistory('custom', emoji || '', text || '');
         
         return this.apiFetch('users/me/status/custom', {
             method: 'PUT',
@@ -261,18 +268,38 @@ export class MattermostAPI {
                 throw new Error('Authentication data not found');
             }
 
-            // Update status
-            await this.updateUserStatus(userId, settings.meetingStatus || 'dnd', token);
-
-            // Update custom status
+            // Prepare meeting status details
             const emoji = settings.meetingEmoji || 'calendar';
             let text = settings.meetingText || 'In a meeting';
             
             if (settings.showMeetingTitle && meetingTitle) {
                 text += `: ${meetingTitle}`;
             }
-
             await this.updateCustomStatus(userId, emoji, text, token);
+
+            // Record meeting status in history
+            await this.recordStatusHistory('meeting', emoji, text);
+
+            // Update status (without recording again since we already recorded above)
+            await this.apiFetch('users/me/status', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: {
+                    user_id: userId,
+                    status: settings.meetingStatus || 'dnd'
+                }
+            });
+
+            // Update custom status (without recording again)
+            await this.apiFetch('users/me/status/custom', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: {
+                    emoji: emoji,
+                    text: text
+                }
+            });
+            
             return true;
         } catch (error) {
             console.error('Failed to set meeting status:', error);
@@ -293,8 +320,13 @@ export class MattermostAPI {
                 throw new Error('Authentication data not found');
             }
 
+            // Record status change to online in history
+            await this.recordStatusHistory('online', '', '');
+
+            // Update status (without recording again since we already recorded above)
             await this.updateUserStatus(userId, 'online', token);
             await this.clearCustomStatus(userId, token);
+            
             return true;
         } catch (error) {
             console.error('Failed to clear meeting status:', error);
@@ -318,6 +350,137 @@ export class MattermostAPI {
             return { success: true, userData };
         } catch (error) {
             return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Record a status change in history
+     */
+    async recordStatusHistory(status, emoji = '', text = '') {
+        try {
+            const history = await this.getStatusHistory();
+            const now = new Date();
+            
+            // End the previous status if it exists
+            if (history.length > 0) {
+                const lastEntry = history[history.length - 1];
+                if (!lastEntry.endTime) {
+                    lastEntry.endTime = now.toISOString();
+                    lastEntry.duration = this.calculateDuration(lastEntry.startTime, lastEntry.endTime);
+                }
+            }
+            
+            // Add new status entry
+            const newEntry = {
+                id: Date.now().toString(),
+                status: status,
+                emoji: emoji,
+                text: text,
+                startTime: now.toISOString(),
+                endTime: null,
+                duration: null
+            };
+            
+            history.push(newEntry);
+            
+            // Keep only last 100 entries to prevent storage bloat
+            if (history.length > 100) {
+                history.splice(0, history.length - 100);
+            }
+            
+            await this.storeStatusHistory(history);
+        } catch (error) {
+            console.error('Failed to record status history:', error);
+        }
+    }
+
+    /**
+     * Get status history from storage
+     */
+    async getStatusHistory() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['mattermostStatusHistory'], (result) => {
+                resolve(result.mattermostStatusHistory || []);
+            });
+        });
+    }
+
+    /**
+     * Store status history in storage
+     */
+    async storeStatusHistory(history) {
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ mattermostStatusHistory: history }, resolve);
+        });
+    }
+
+    /**
+     * Delete a status history entry
+     */
+    async deleteStatusHistoryEntry(entryId) {
+        try {
+            const history = await this.getStatusHistory();
+            const filteredHistory = history.filter(entry => entry.id !== entryId);
+            await this.storeStatusHistory(filteredHistory);
+            return true;
+        } catch (error) {
+            console.error('Failed to delete status history entry:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Update a status history entry
+     */
+    async updateStatusHistoryEntry(entryId, updates) {
+        try {
+            const history = await this.getStatusHistory();
+            const entryIndex = history.findIndex(entry => entry.id === entryId);
+            
+            if (entryIndex === -1) {
+                throw new Error('Entry not found');
+            }
+            
+            history[entryIndex] = { ...history[entryIndex], ...updates };
+            await this.storeStatusHistory(history);
+            return true;
+        } catch (error) {
+            console.error('Failed to update status history entry:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Calculate duration between two timestamps
+     */
+    calculateDuration(startTime, endTime) {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const diffMs = end - start;
+        
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+
+    /**
+     * Clear all status history
+     */
+    async clearStatusHistory() {
+        try {
+            await this.storeStatusHistory([]);
+            return true;
+        } catch (error) {
+            console.error('Failed to clear status history:', error);
+            return false;
         }
     }
 }

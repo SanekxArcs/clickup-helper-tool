@@ -44,6 +44,23 @@ export class MattermostTab {
         // Settings buttons
         document.getElementById('save-settings-btn')?.addEventListener('click', () => this.saveSettings());
         document.getElementById('test-connection-btn')?.addEventListener('click', () => this.testConnection());
+        document.getElementById('history-btn')?.addEventListener('click', () => this.showHistoryModal());
+
+        // History modal event listeners
+        document.getElementById('close-history-modal')?.addEventListener('click', () => this.hideHistoryModal());
+        document.getElementById('clear-history-btn')?.addEventListener('click', () => this.clearAllHistory());
+        document.getElementById('close-edit-modal')?.addEventListener('click', () => this.hideEditModal());
+        document.getElementById('cancel-edit')?.addEventListener('click', () => this.hideEditModal());
+        document.getElementById('edit-history-form')?.addEventListener('submit', (e) => this.handleEditSubmit(e));
+        document.getElementById('edit-status')?.addEventListener('change', (e) => this.toggleCustomFields(e.target.value));
+
+        // Close modals when clicking outside
+        document.getElementById('history-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'history-modal') this.hideHistoryModal();
+        });
+        document.getElementById('edit-history-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'edit-history-modal') this.hideEditModal();
+        });
 
         // Enter key handling for login forms
         document.getElementById('login-id')?.addEventListener('keypress', (e) => {
@@ -441,5 +458,261 @@ export class MattermostTab {
 
     async clearMeetingStatus() {
         return await mattermostAPI.clearMeetingStatus();
+    }
+
+    // History management methods
+    async showHistoryModal() {
+        try {
+            const history = await mattermostAPI.getStatusHistory();
+            this.displayHistory(history);
+            document.getElementById('history-modal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Failed to load history:', error);
+            this.showMessage('Failed to load status history', 'error');
+        }
+    }
+
+    hideHistoryModal() {
+        document.getElementById('history-modal').classList.add('hidden');
+    }
+
+    displayHistory(history) {
+        const historyList = document.getElementById('history-list');
+        const historyEmpty = document.getElementById('history-empty');
+        const historyCount = document.getElementById('history-count');
+
+        if (!historyList || !historyEmpty || !historyCount) return;
+
+        historyCount.textContent = history.length;
+
+        if (history.length === 0) {
+            historyList.innerHTML = '';
+            historyEmpty.classList.remove('hidden');
+            return;
+        }
+
+        historyEmpty.classList.add('hidden');
+        
+        // Sort history by start time (newest first)
+        const sortedHistory = [...history].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+        
+        historyList.innerHTML = sortedHistory.map(entry => this.createHistoryEntryHTML(entry)).join('');
+        
+        // Add event listeners for edit and delete buttons
+        historyList.querySelectorAll('.edit-entry-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const entryId = e.target.closest('.edit-entry-btn').dataset.entryId;
+                this.editHistoryEntry(entryId);
+            });
+        });
+        
+        historyList.querySelectorAll('.delete-entry-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const entryId = e.target.closest('.delete-entry-btn').dataset.entryId;
+                this.deleteHistoryEntry(entryId);
+            });
+        });
+    }
+
+    createHistoryEntryHTML(entry) {
+        const startTime = new Date(entry.startTime);
+        const endTime = entry.endTime ? new Date(entry.endTime) : null;
+        const isActive = !entry.endTime;
+        
+        const statusDisplay = this.getStatusDisplay(entry.status, entry.emoji, entry.text);
+        const timeDisplay = this.formatTimeDisplay(startTime, endTime, entry.duration);
+        
+        return `
+            <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        ${statusDisplay.indicator}
+                        <div>
+                            <div class="font-medium text-gray-800">${statusDisplay.title}</div>
+                            ${statusDisplay.subtitle ? `<div class="text-sm text-gray-600">${statusDisplay.subtitle}</div>` : ''}
+                        </div>
+                        ${isActive ? '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">Active</span>' : ''}
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="edit-entry-btn text-blue-600 hover:text-blue-700 p-1" data-entry-id="${entry.id}" title="Edit">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button class="delete-entry-btn text-red-600 hover:text-red-700 p-1" data-entry-id="${entry.id}" title="Delete">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-3 text-sm text-gray-500">
+                    ${timeDisplay}
+                </div>
+            </div>
+        `;
+    }
+
+    getStatusDisplay(status, emoji, text) {
+        const statusColors = {
+            online: 'bg-green-500',
+            away: 'bg-yellow-500',
+            dnd: 'bg-red-500',
+            offline: 'bg-gray-500',
+            custom: 'bg-blue-500'
+        };
+        
+        const statusNames = {
+            online: 'Online',
+            away: 'Away',
+            dnd: 'Do Not Disturb',
+            offline: 'Offline',
+            custom: 'Custom Status'
+        };
+        
+        const indicator = `<div class="w-3 h-3 rounded-full ${statusColors[status] || 'bg-gray-500'}"></div>`;
+        const title = statusNames[status] || status;
+        
+        let subtitle = '';
+        if (status === 'custom' && (emoji || text)) {
+            subtitle = `${emoji ? `:${emoji}:` : ''} ${text || ''}`.trim();
+        }
+        
+        return { indicator, title, subtitle };
+    }
+
+    formatTimeDisplay(startTime, endTime, duration) {
+        const formatTime = (date) => {
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        };
+        
+        const startDisplay = formatTime(startTime);
+        
+        if (endTime) {
+            const endDisplay = formatTime(endTime);
+            return `${startDisplay} → ${endDisplay} (${duration || 'Unknown duration'})`;
+        } else {
+            const now = new Date();
+            const currentDuration = mattermostAPI.calculateDuration(startTime.toISOString(), now.toISOString());
+            return `Started: ${startDisplay} (${currentDuration} so far)`;
+        }
+    }
+
+    async editHistoryEntry(entryId) {
+        try {
+            const history = await mattermostAPI.getStatusHistory();
+            const entry = history.find(e => e.id === entryId);
+            
+            if (!entry) {
+                this.showMessage('History entry not found', 'error');
+                return;
+            }
+            
+            // Populate edit form
+            document.getElementById('edit-entry-id').value = entryId;
+            document.getElementById('edit-status').value = entry.status;
+            document.getElementById('edit-emoji').value = entry.emoji || '';
+            document.getElementById('edit-text').value = entry.text || '';
+            
+            this.toggleCustomFields(entry.status);
+            document.getElementById('edit-history-modal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Failed to load entry for editing:', error);
+            this.showMessage('Failed to load entry for editing', 'error');
+        }
+    }
+
+    hideEditModal() {
+        document.getElementById('edit-history-modal').classList.add('hidden');
+    }
+
+    toggleCustomFields(status) {
+        const customFields = document.getElementById('edit-custom-fields');
+        if (customFields) {
+            customFields.classList.toggle('hidden', status !== 'custom');
+        }
+    }
+
+    async handleEditSubmit(e) {
+        e.preventDefault();
+        
+        try {
+            const entryId = document.getElementById('edit-entry-id').value;
+            const status = document.getElementById('edit-status').value;
+            const emoji = document.getElementById('edit-emoji').value.trim();
+            const text = document.getElementById('edit-text').value.trim();
+            
+            const updates = { status };
+            if (status === 'custom') {
+                updates.emoji = emoji;
+                updates.text = text;
+            } else {
+                updates.emoji = '';
+                updates.text = '';
+            }
+            
+            const success = await mattermostAPI.updateStatusHistoryEntry(entryId, updates);
+            
+            if (success) {
+                this.hideEditModal();
+                this.showMessage('History entry updated successfully', 'success');
+                // Refresh the history display
+                const history = await mattermostAPI.getStatusHistory();
+                this.displayHistory(history);
+            } else {
+                this.showMessage('Failed to update history entry', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to update history entry:', error);
+            this.showMessage('Failed to update history entry', 'error');
+        }
+    }
+
+    async deleteHistoryEntry(entryId) {
+        if (!confirm('Are you sure you want to delete this history entry?')) {
+            return;
+        }
+        
+        try {
+            const success = await mattermostAPI.deleteStatusHistoryEntry(entryId);
+            
+            if (success) {
+                this.showMessage('History entry deleted successfully', 'success');
+                // Refresh the history display
+                const history = await mattermostAPI.getStatusHistory();
+                this.displayHistory(history);
+            } else {
+                this.showMessage('Failed to delete history entry', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to delete history entry:', error);
+            this.showMessage('Failed to delete history entry', 'error');
+        }
+    }
+
+    async clearAllHistory() {
+        if (!confirm('Are you sure you want to clear all status history? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            const success = await mattermostAPI.clearStatusHistory();
+            
+            if (success) {
+                this.showMessage('All history cleared successfully', 'success');
+                this.displayHistory([]);
+            } else {
+                this.showMessage('Failed to clear history', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to clear history:', error);
+            this.showMessage('Failed to clear history', 'error');
+        }
     }
 }
