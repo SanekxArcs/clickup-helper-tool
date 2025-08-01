@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Branch & Commit Helper",
-  "version": "25.07.22",
+  "version": "25.08.01",
   "description": "Generate branch names and commit messages using Gemini AI with custom rules",
   "permissions": [
     "storage",

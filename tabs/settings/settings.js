@@ -23,6 +23,7 @@ export class SettingsTab {
             geminiModel: document.getElementById('geminiModel'),
             temperature: document.getElementById('temperature'),
             temperatureValue: document.getElementById('temperatureValue'),
+            timeEstimationPrompt: document.getElementById('timeEstimationPrompt'),
             saveSettingsBtn: document.getElementById('saveSettingsBtn'),
             settingsSaved: document.getElementById('settingsSaved'),
             
@@ -126,7 +127,7 @@ export class SettingsTab {
 
     async loadSavedData() {
         const data = await new Promise(resolve => {
-            chrome.storage.local.get(['apiKey', 'geminiModel', 'temperature', 'branchRules', 'commitRules'], resolve);
+            chrome.storage.local.get(['apiKey', 'geminiModel', 'temperature', 'timeEstimationPrompt', 'branchRules', 'commitRules'], resolve);
         });
 
         if (this.elements.apiKey) {
@@ -140,6 +141,10 @@ export class SettingsTab {
         if (this.elements.temperature) {
             this.elements.temperature.value = data.temperature || 0.3;
             this.updateTemperatureDisplay();
+        }
+
+        if (this.elements.timeEstimationPrompt) {
+            this.elements.timeEstimationPrompt.value = data.timeEstimationPrompt || this.getDefaultTimeEstimationPrompt();
         }
 
         // Load rules data
@@ -156,7 +161,8 @@ export class SettingsTab {
         const data = {
             apiKey: this.elements.apiKey.value.trim(),
             geminiModel: this.elements.geminiModel.value,
-            temperature: parseFloat(this.elements.temperature.value)
+            temperature: parseFloat(this.elements.temperature.value),
+            timeEstimationPrompt: this.elements.timeEstimationPrompt.value.trim()
         };
         
         chrome.storage.local.set(data, () => {
@@ -544,5 +550,38 @@ export class SettingsTab {
             branchRules: data.branchRules || '',
             commitRules: data.commitRules || ''
         };
+    }
+
+    getDefaultTimeEstimationPrompt() {
+        return `You are a senior software development project manager with expertise in time estimation.
+
+Task Information:
+- Task ID: {taskId}
+- Title: {taskTitle}
+- Description: {taskDescription}
+
+Analyze this task and provide time estimations for different experience levels. Consider:
+- Task complexity and scope
+- Implementation requirements
+- Testing time
+- Code review and iteration time
+- Documentation needs
+- Potential blockers or research needed
+
+Provide estimations in the following JSON format (respond with ONLY the JSON, no additional text):
+{
+  "junior": "Xh Ymin",
+  "mid": "Xh Ymin", 
+  "senior": "Xh Ymin",
+  "reasoning": "Brief explanation of the estimation factors"
+}
+
+Guidelines:
+- Use format like "2h 30min", "45min", "1h 15min"
+- Junior developers typically take 1.5-3x longer than senior developers
+- Mid-level developers typically take 1.2-2x longer than senior developers
+- Consider learning curve, debugging time, and mentorship needs
+- Be realistic but not overly conservative
+- Minimum estimation should be 15min, maximum should be reasonable`;
     }
 }

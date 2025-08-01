@@ -1,5 +1,6 @@
 // Generate Tab - Branch and Commit Generation
 import { Utils } from '../../shared/utils.js';
+import { TimeEstimationService } from './services/time-estimation-service.js';
 
 // Function to extract task data from the current page
 // This function will be injected into the active tab
@@ -154,6 +155,7 @@ export class GenerateTab {
     constructor() {
         this.elements = {};
         this.isInitialized = false;
+        this.timeEstimationService = new TimeEstimationService();
     }
 
     async onActivate() {
@@ -184,12 +186,19 @@ export class GenerateTab {
             taskDescription: document.getElementById('taskDescription'),
             taskPriority: document.getElementById('taskPriority'),
             generateBtn: document.getElementById('generateBtn'),
+            timeEstimationBtn: document.getElementById('timeEstimationBtn'),
             autoFillBtn: document.getElementById('autoFillBtn'),
             clearFieldsBtn: document.getElementById('clearFieldsBtn'),
             saveTaskBtn: document.getElementById('saveTaskBtn'),
             results: document.getElementById('results'),
             branchResult: document.getElementById('branchResult'),
             commitResult: document.getElementById('commitResult'),
+            timeEstimationResults: document.getElementById('timeEstimationResults'),
+            seniorTime: document.getElementById('seniorTime'),
+            midTime: document.getElementById('midTime'),
+            juniorTime: document.getElementById('juniorTime'),
+            timeReasoning: document.getElementById('timeReasoning'),
+            copyTimeEstimationBtn: document.getElementById('copyTimeEstimationBtn'),
             loading: document.getElementById('loading'),
             error: document.getElementById('error'),
             rateLimitWarning: document.getElementById('rateLimitWarning'),
@@ -204,9 +213,14 @@ export class GenerateTab {
 
     setupEventListeners() {
         this.elements.generateBtn.addEventListener('click', () => this.generateBranchAndCommit());
+        this.elements.timeEstimationBtn.addEventListener('click', () => this.generateTimeEstimation());
         this.elements.autoFillBtn.addEventListener('click', () => this.autoFillFromPage());
         this.elements.clearFieldsBtn.addEventListener('click', () => this.clearFields());
         this.elements.saveTaskBtn.addEventListener('click', () => this.copyTaskLink());
+        
+        if (this.elements.copyTimeEstimationBtn) {
+            this.elements.copyTimeEstimationBtn.addEventListener('click', () => this.copyTimeEstimation());
+        }
 
         // Auto-save functionality
         [this.elements.taskId, this.elements.taskTitle, this.elements.taskDescription, this.elements.taskPriority].forEach(element => {
@@ -258,6 +272,15 @@ export class GenerateTab {
         if (this.elements.regenerateBothBtn) {
             this.elements.regenerateBothBtn.addEventListener('click', () => this.regenerateBoth());
         }
+    }
+
+    getTaskData() {
+        return {
+            taskId: this.elements.taskId.value.trim(),
+            taskTitle: this.elements.taskTitle.value.trim(),
+            taskDescription: this.elements.taskDescription.value.trim(),
+            taskPriority: this.elements.taskPriority.value
+        };
     }
 
     async generateBranchAndCommit() {
@@ -516,6 +539,7 @@ Return ONLY in this exact JSON format:
         this.elements.taskDescription.value = '';
         this.elements.taskPriority.value = 'Normal';
         this.elements.results.classList.add('hidden');
+        this.hideTimeEstimationResults();
         this.elements.priorityIndicator.classList.add('hidden');
         this.hideError();
         this.autoSave();
@@ -822,6 +846,7 @@ Return ONLY in this exact JSON format:
         if (show) {
             this.elements.loading.classList.remove('hidden');
             this.elements.generateBtn.disabled = true;
+            if (this.elements.timeEstimationBtn) this.elements.timeEstimationBtn.disabled = true;
             // Disable regeneration buttons during loading
             if (this.elements.regenerateBranchBtn) this.elements.regenerateBranchBtn.disabled = true;
             if (this.elements.regenerateCommitBtn) this.elements.regenerateCommitBtn.disabled = true;
@@ -829,6 +854,7 @@ Return ONLY in this exact JSON format:
         } else {
             this.elements.loading.classList.add('hidden');
             this.elements.generateBtn.disabled = false;
+            if (this.elements.timeEstimationBtn) this.elements.timeEstimationBtn.disabled = false;
             // Re-enable regeneration buttons after loading
             if (this.elements.regenerateBranchBtn) this.elements.regenerateBranchBtn.disabled = false;
             if (this.elements.regenerateCommitBtn) this.elements.regenerateCommitBtn.disabled = false;
@@ -1133,5 +1159,85 @@ Please generate ONLY the commit message, nothing else. Format: type: [TASK-ID] d
         // Extract commit message from the API response
         const lines = text.split('\n').filter(line => line.trim());
         return lines[0]?.trim() || text.trim();
+    }
+
+    async generateTimeEstimation() {
+        try {
+            this.showLoading(true);
+            this.hideError();
+            this.hideTimeEstimationResults();
+
+            const taskData = this.getTaskData();
+            
+            if (!taskData.taskTitle.trim()) {
+                throw new Error('Please fill in the task title before generating time estimation');
+            }
+
+            const estimation = await this.timeEstimationService.estimateTime({
+                taskId: taskData.taskId,
+                taskTitle: taskData.taskTitle,
+                taskDescription: taskData.taskDescription
+            });
+
+            this.displayTimeEstimationResults(estimation);
+
+        } catch (error) {
+            console.error('Time estimation error:', error);
+            this.showError(`Time estimation failed: ${error.message}`);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    displayTimeEstimationResults(estimation) {
+        this.elements.seniorTime.textContent = estimation.senior;
+        this.elements.midTime.textContent = estimation.mid;
+        this.elements.juniorTime.textContent = estimation.junior;
+        this.elements.timeReasoning.textContent = estimation.reasoning;
+        
+        this.showTimeEstimationResults();
+    }
+
+    showTimeEstimationResults() {
+        this.elements.timeEstimationResults.classList.remove('hidden');
+    }
+
+    hideTimeEstimationResults() {
+        this.elements.timeEstimationResults.classList.add('hidden');
+    }
+
+    copyTimeEstimation() {
+        try {
+            const senior = this.elements.seniorTime.textContent;
+            const mid = this.elements.midTime.textContent;
+            const junior = this.elements.juniorTime.textContent;
+            const reasoning = this.elements.timeReasoning.textContent;
+
+            const formattedEstimation = `Time Estimation:
+🎯 Senior Developer: ${senior}
+👩‍💻 Mid-level Developer: ${mid}
+👨‍🎓 Junior Developer: ${junior}
+
+💭 Reasoning: ${reasoning}`;
+
+            navigator.clipboard.writeText(formattedEstimation).then(() => {
+                Utils.showNotification('Time estimation copied to clipboard!', 'success');
+                
+                // Visual feedback
+                const originalText = this.elements.copyTimeEstimationBtn.textContent;
+                this.elements.copyTimeEstimationBtn.textContent = '✓ Copied!';
+                this.elements.copyTimeEstimationBtn.classList.add('bg-green-100', 'ring-green-400');
+                this.elements.copyTimeEstimationBtn.classList.remove('bg-emerald-50', 'ring-emerald-400');
+                
+                setTimeout(() => {
+                    this.elements.copyTimeEstimationBtn.textContent = originalText;
+                    this.elements.copyTimeEstimationBtn.classList.remove('bg-green-100', 'ring-green-400');
+                    this.elements.copyTimeEstimationBtn.classList.add('bg-emerald-50', 'ring-emerald-400');
+                }, 2000);
+            });
+        } catch (error) {
+            console.error('Failed to copy time estimation:', error);
+            Utils.showNotification('Failed to copy to clipboard', 'error');
+        }
     }
 }

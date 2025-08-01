@@ -19,7 +19,7 @@ export class TimeEstimationService {
             throw new Error('Task title is required for time estimation');
         }
 
-        const settings = await Utils.getStorageData(['apiKey', 'geminiModel']);
+        const settings = await Utils.getStorageData(['apiKey', 'geminiModel', 'timeEstimationPrompt']);
         
         if (!settings.apiKey) {
             throw new Error('Please set your Gemini API key in Settings to use time estimation');
@@ -31,7 +31,7 @@ export class TimeEstimationService {
             throw new Error('Rate limit exceeded. Please wait before making another request.');
         }
 
-        const prompt = this.buildTimeEstimationPrompt(taskId, taskTitle, taskDescription);
+        const prompt = this.buildTimeEstimationPrompt(taskId, taskTitle, taskDescription, settings.timeEstimationPrompt);
         
         try {
             const response = await this.callGeminiAPI(prompt, settings);
@@ -47,7 +47,17 @@ export class TimeEstimationService {
         }
     }
 
-    buildTimeEstimationPrompt(taskId, taskTitle, taskDescription) {
+    buildTimeEstimationPrompt(taskId, taskTitle, taskDescription, customPrompt) {
+        // Use custom prompt if provided, otherwise use default
+        if (customPrompt && customPrompt.trim()) {
+            // Replace placeholders in custom prompt
+            return customPrompt
+                .replace(/\{taskId\}/g, taskId || 'N/A')
+                .replace(/\{taskTitle\}/g, taskTitle || 'N/A')
+                .replace(/\{taskDescription\}/g, taskDescription || 'No description provided');
+        }
+
+        // Default prompt
         const prompt = `You are a senior software development project manager with expertise in time estimation.
 
 Task Information:
