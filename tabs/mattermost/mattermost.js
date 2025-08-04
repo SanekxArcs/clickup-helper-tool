@@ -476,6 +476,16 @@ export class MattermostTab {
         const sortedHistory = [...this.meetHistory].sort((a, b) => b.startTime - a.startTime);
         
         historyList.innerHTML = sortedHistory.map(entry => this.createMeetHistoryEntryHTML(entry)).join('');
+        
+        // Add event delegation for delete buttons
+        historyList.removeEventListener('click', this.handleMeetHistoryClick);
+        this.handleMeetHistoryClick = (e) => {
+            if (e.target.classList.contains('delete-meet-entry')) {
+                const entryId = e.target.getAttribute('data-entry-id');
+                this.deleteMeetHistoryEntry(entryId);
+            }
+        };
+        historyList.addEventListener('click', this.handleMeetHistoryClick);
     }
     
     createMeetHistoryEntryHTML(entry) {
@@ -489,7 +499,15 @@ export class MattermostTab {
                         <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                         <span class="font-medium text-gray-800">${entry.title || 'Google Meet Session'}</span>
                     </div>
-                    <span class="text-xs text-gray-500">${timestamp}</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-gray-500">${timestamp}</span>
+                        <button class="delete-meet-entry text-red-500 hover:text-red-700 focus:outline-none cursor-pointer p-1 rounded" 
+                                data-entry-id="${entry.id}"
+                                title="Delete entry"
+                                style="pointer-events: auto; z-index: 10;">
+                            🗑️
+                        </button>
+                    </div>
                 </div>
                 <div class="text-sm text-gray-600">
                     <p>Status: ${entry.status || 'Do Not Disturb'}</p>
@@ -530,6 +548,25 @@ export class MattermostTab {
         });
         this.displayMeetHistory();
         this.showMessage('Google Meet history cleared', 'success');
+    }
+
+    async deleteMeetHistoryEntry(entryId) {
+        try {
+            // Remove the entry from the local array
+            this.meetHistory = this.meetHistory.filter(entry => entry.id !== entryId);
+            
+            // Update storage
+            await chrome.storage.sync.set({ 
+                meetHistory: this.meetHistory
+            });
+            
+            // Refresh the display
+            this.displayMeetHistory();
+            this.showMessage('Meeting history entry deleted', 'success');
+        } catch (error) {
+            console.error('Error deleting meet history entry:', error);
+            this.showMessage('Failed to delete entry', 'error');
+        }
     }
 
 

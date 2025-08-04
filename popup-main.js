@@ -108,6 +108,9 @@ class Application {
         // Initialize Mattermost tab
         this.tabs.mattermost = new MattermostTab();
         this.tabManager.registerTab('mattermost', this.tabs.mattermost);
+        
+        // Make mattermost tab globally accessible for delete functionality
+        window.mattermostTab = this.tabs.mattermost;
 
         // Initialize Settings tab
         this.tabs.settings = new SettingsTab();
