@@ -6,6 +6,7 @@ export class MattermostTab {
         this.isAuthenticated = false;
         this.currentUser = null;
         this.meetHistory = [];
+        this.customStatusPresets = [];
         this.initialize();
     }
 
@@ -17,6 +18,9 @@ export class MattermostTab {
             
             // Load Google Meet history
             this.loadMeetHistory();
+            
+            // Load custom status presets
+            this.loadCustomStatusPresets();
         } catch (error) {
             console.error('Failed to initialize Mattermost tab:', error);
         }
@@ -36,9 +40,14 @@ export class MattermostTab {
             });
         });
 
-        // Custom status buttons
-        document.getElementById('update-custom-status-btn')?.addEventListener('click', () => this.updateCustomStatus());
+        // Custom status presets
+        document.getElementById('create-status-btn')?.addEventListener('click', () => this.showCustomStatusModal());
         document.getElementById('clear-status-btn')?.addEventListener('click', () => this.clearCustomStatus());
+        
+        // Custom status modal
+        document.getElementById('close-status-modal')?.addEventListener('click', () => this.hideCustomStatusModal());
+        document.getElementById('cancel-status-modal')?.addEventListener('click', () => this.hideCustomStatusModal());
+        document.getElementById('custom-status-form')?.addEventListener('submit', (e) => this.handleCreateCustomStatus(e));
 
         // Google Meet integration toggle
         document.getElementById('google-meet-integration')?.addEventListener('change', (e) => {
@@ -248,32 +257,181 @@ export class MattermostTab {
         }
     }
 
-    async updateCustomStatus() {
+    async loadCustomStatusPresets() {
+        try {
+            const result = await chrome.storage.sync.get(['customStatusPresets']);
+            this.customStatusPresets = result.customStatusPresets || [];
+            this.displayCustomStatusPresets();
+        } catch (error) {
+            console.error('Failed to load custom status presets:', error);
+            this.customStatusPresets = [];
+        }
+    }
+
+    displayCustomStatusPresets() {
+        const listElement = document.getElementById('custom-status-list');
+        const emptyElement = document.getElementById('custom-status-empty');
+        
+        if (!listElement || !emptyElement) return;
+        
+        if (this.customStatusPresets.length === 0) {
+            listElement.innerHTML = '';
+            emptyElement.classList.remove('hidden');
+            return;
+        }
+        
+        emptyElement.classList.add('hidden');
+        listElement.innerHTML = this.customStatusPresets.map(preset => 
+            this.createCustomStatusPresetHTML(preset)
+        ).join('');
+        
+        // Add event listeners for preset buttons
+        listElement.querySelectorAll('.apply-preset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const presetId = e.currentTarget.getAttribute('data-preset-id');
+                this.applyCustomStatusPreset(presetId);
+            });
+        });
+        
+        // Add event listeners for delete buttons
+        listElement.querySelectorAll('.delete-preset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const presetId = e.currentTarget.getAttribute('data-preset-id');
+                this.deleteCustomStatusPreset(presetId);
+            });
+        });
+    }
+
+    createCustomStatusPresetHTML(preset) {
+        const availabilityColors = {
+            online: 'bg-green-100 text-green-800',
+            away: 'bg-yellow-100 text-yellow-800',
+            dnd: 'bg-red-100 text-red-800',
+            offline: 'bg-gray-100 text-gray-800'
+        };
+        
+        const durationText = preset.duration > 0 ? `${preset.duration}m` : 'No expiry';
+        
+        return `
+            <div class="flex items-center justify-between p-3 border bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <button class="apply-preset-btn flex-1  text-left" data-preset-id="${preset.id}">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-lg">:${preset.emoji}:</span>
+                        <div class="font-medium text-gray-800">${Utils.escapeHtml(preset.title)}</div>
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 text-xs text-gray-500">
+                                <span class="px-2 py-1 rounded-full ${availabilityColors[preset.availability]}">
+                                    ${preset.availability.toUpperCase()}
+                                </span>
+                                <span>${durationText}</span>
+                            </div>
+                        </div>
+                    </div>
+                </button>
+                <button class="delete-preset-btn ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors" data-preset-id="${preset.id}" title="Delete preset">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }
+
+    showCustomStatusModal() {
+        const modal = document.getElementById('custom-status-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            // Reset form
+            document.getElementById('custom-status-form').reset();
+            document.getElementById('status-preset-duration').value = '0';
+        }
+    }
+
+    hideCustomStatusModal() {
+        const modal = document.getElementById('custom-status-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    async handleCreateCustomStatus(e) {
+        e.preventDefault();
+        
+        const emoji = document.getElementById('status-preset-emoji').value.trim();
+        const title = document.getElementById('status-preset-title').value.trim();
+        const duration = parseInt(document.getElementById('status-preset-duration').value) || 0;
+        const availability = document.getElementById('status-preset-availability').value;
+        
+        if (!emoji || !title) {
+            this.showMessage('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const preset = {
+            id: Date.now().toString(),
+            emoji,
+            title,
+            duration,
+            availability,
+            createdAt: new Date().toISOString()
+        };
+        
+        this.customStatusPresets.push(preset);
+        await this.saveCustomStatusPresets();
+        this.displayCustomStatusPresets();
+        this.hideCustomStatusModal();
+        this.showMessage('Custom status preset created successfully', 'success');
+    }
+
+    async applyCustomStatusPreset(presetId) {
         if (!this.isAuthenticated) {
             this.showMessage('Please authenticate first', 'error');
             return;
         }
-
+        
+        const preset = this.customStatusPresets.find(p => p.id === presetId);
+        if (!preset) {
+            this.showMessage('Preset not found', 'error');
+            return;
+        }
+        
         try {
-            const emoji = document.getElementById('emoji-input').value.trim() || 'calendar';
-            const text = document.getElementById('status-text-input').value.trim();
-            const durationInput = document.getElementById('status-duration-input');
-            const duration = durationInput ? parseInt(durationInput.value) || 0 : 0;
-
             const stored = await mattermostAPI.getStoredAuth();
             const token = stored.MMAccessToken || stored.MMAuthToken;
             const userId = stored.MMUserId;
-
-            await mattermostAPI.updateCustomStatus(userId, emoji, text, token, duration);
             
-            let message = 'Custom status updated successfully';
-            if (duration > 0) {
-                message += ` (Duration: ${duration} minutes)`;
+            // Update availability status
+            await mattermostAPI.updateUserStatus(userId, preset.availability, token);
+            
+            // Update custom status
+            await mattermostAPI.updateCustomStatus(userId, preset.emoji, preset.title, token, preset.duration);
+            
+            let message = `Applied preset: ${preset.title}`;
+            if (preset.duration > 0) {
+                message += ` (Duration: ${preset.duration} minutes)`;
             }
             this.showMessage(message, 'success');
         } catch (error) {
-            console.error('Failed to update custom status:', error);
-            this.showMessage('Failed to update custom status', 'error');
+            console.error('Failed to apply custom status preset:', error);
+            this.showMessage('Failed to apply preset', 'error');
+        }
+    }
+
+    async deleteCustomStatusPreset(presetId) {
+        if (confirm('Are you sure you want to delete this preset?')) {
+            this.customStatusPresets = this.customStatusPresets.filter(p => p.id !== presetId);
+            await this.saveCustomStatusPresets();
+            this.displayCustomStatusPresets();
+            this.showMessage('Preset deleted successfully', 'success');
+        }
+    }
+
+    async saveCustomStatusPresets() {
+        try {
+            await chrome.storage.sync.set({ customStatusPresets: this.customStatusPresets });
+        } catch (error) {
+            console.error('Failed to save custom status presets:', error);
         }
     }
 
