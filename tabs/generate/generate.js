@@ -313,6 +313,10 @@ export class GenerateTab {
             }
 
             const result = await this.callGeminiAPI(data, taskId, taskTitle, taskDescription, taskPriority);
+            
+            // Update rate limit tracking after successful API call
+            await this.updateRateLimit();
+            
             this.displayResults(result);
             await this.saveToHistory(taskId, taskTitle, taskDescription, taskPriority, result);
             
@@ -340,7 +344,22 @@ export class GenerateTab {
         });
 
         if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            let errorMessage = `API request failed: ${response.status}`;
+            
+            if (response.status === 500) {
+                errorMessage = 'Internal server error from Gemini API. This might be due to model overload or temporary issues. Please try again in a few moments or switch to a different model.';
+            } else if (response.status === 429) {
+                errorMessage = 'Rate limit exceeded. Please wait before making another request or switch to a different model.';
+            } else if (response.status === 400) {
+                errorMessage = 'Invalid request. Please check your API key and try again.';
+            } else if (response.status === 403) {
+                errorMessage = 'Access denied. Please check your API key permissions.';
+            } else if (errorData.error?.message) {
+                errorMessage = errorData.error.message;
+            }
+            
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -833,15 +852,132 @@ Return ONLY in this exact JSON format:
     }
 
     async checkRateLimit() {
-        // Rate limit checking logic
-        return true; // Simplified for now
+        const now = Date.now();
+        const currentDate = new Date().toDateString(); // Get today's date string (e.g., "Sun Aug 04 2025")
+        const settings = await Utils.getStorageData(['geminiModel']);
+        const modelName = settings.geminiModel || 'gemini-2.5-flash';
+        const storageKey = `rateLimits_${modelName}`;
+        
+        const rateLimitData = await Utils.getStorageData([storageKey]);
+        const modelLimits = rateLimitData[storageKey] || {
+            minuteRequests: [],
+            dayRequests: [],
+            currentDate: currentDate,
+            lastReset: now
+        };
+        
+        // Get rate limits for current model
+        const currentLimits = this.getModelRateLimits(modelName);
+        
+        // Clean old minute requests (older than 1 minute)
+        const oneMinuteAgo = now - 60 * 1000;
+        modelLimits.minuteRequests = modelLimits.minuteRequests.filter(time => time > oneMinuteAgo);
+        
+        // Clean day requests if date has changed (new day = reset daily limits)
+        if (modelLimits.currentDate !== currentDate) {
+            console.log(`Date changed from ${modelLimits.currentDate} to ${currentDate} - resetting daily rate limits for ${modelName}`);
+            modelLimits.dayRequests = []; // Clear all daily requests
+            modelLimits.currentDate = currentDate; // Update to current date
+        }
+        
+        // Check if we're within limits
+        const minuteCount = modelLimits.minuteRequests.length;
+        const dayCount = modelLimits.dayRequests.length;
+        
+        if (minuteCount >= currentLimits.requests_per_minute) {
+            this.showRateLimitWarning(`Rate limit exceeded for ${modelName}: ${minuteCount}/${currentLimits.requests_per_minute} requests per minute. Please wait or switch to a different model.`);
+            return false;
+        }
+        
+        if (dayCount >= currentLimits.requests_per_day) {
+            this.showRateLimitWarning(`Daily rate limit exceeded for ${modelName}: ${dayCount}/${currentLimits.requests_per_day} requests per day. Please wait until tomorrow or switch to a different model.`);
+            return false;
+        }
+        
+        return true;
     }
 
-    showRateLimitWarning() {
+    getModelRateLimits(modelName) {
+        const modelRateLimits = {
+            'gemini-2.5-pro': {
+                requests_per_minute: 5,
+                requests_per_day: 100,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.5-flash': {
+                requests_per_minute: 10,
+                requests_per_day: 250,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.5-flash-lite': {
+                requests_per_minute: 15,
+                requests_per_day: 1000,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.0-flash-exp': {
+                requests_per_minute: 15,
+                requests_per_day: 200,
+                tokens_per_minute: 1000000
+            },
+            'gemini-2.0-flash-lite': {
+                requests_per_minute: 30,
+                requests_per_day: 200,
+                tokens_per_minute: 1000000
+            },
+            'gemini-1.5-flash': {
+                requests_per_minute: 15,
+                requests_per_day: 1500,
+                tokens_per_minute: 1000000
+            },
+            'gemini-1.5-pro': {
+                requests_per_minute: 2,
+                requests_per_day: 50,
+                tokens_per_minute: 32000
+            }
+        };
+        return modelRateLimits[modelName] || modelRateLimits['gemini-2.5-flash'];
+    }
+
+    async updateRateLimit() {
+        const now = Date.now();
+        const currentDate = new Date().toDateString(); // Get today's date string
+        const settings = await Utils.getStorageData(['geminiModel']);
+        const modelName = settings.geminiModel || 'gemini-2.5-flash';
+        const storageKey = `rateLimits_${modelName}`;
+        
+        const rateLimitData = await Utils.getStorageData([storageKey]);
+        const modelLimits = rateLimitData[storageKey] || {
+            minuteRequests: [],
+            dayRequests: [],
+            currentDate: currentDate,
+            lastReset: now
+        };
+        
+        // Update current date if needed
+        if (modelLimits.currentDate !== currentDate) {
+            modelLimits.dayRequests = []; // Reset daily requests for new day
+            modelLimits.currentDate = currentDate;
+        }
+        
+        // Add current request timestamp
+        modelLimits.minuteRequests.push(now);
+        modelLimits.dayRequests.push(now); // Store timestamp, but date comparison handles daily reset
+        modelLimits.lastReset = now;
+        
+        // Save updated limits
+        await Utils.setStorageData({
+            [storageKey]: modelLimits
+        });
+    }
+
+    showRateLimitWarning(customMessage) {
+        if (customMessage && this.elements.rateLimitWarning) {
+            this.elements.rateLimitWarning.innerHTML = `⚠️ ${customMessage}`;
+        }
         this.elements.rateLimitWarning.classList.remove('hidden');
         setTimeout(() => {
             this.elements.rateLimitWarning.classList.add('hidden');
-        }, 5000);
+        }, 8000); // Show longer for more detailed messages
     }    showLoading(show) {
         if (show) {
             this.elements.loading.classList.remove('hidden');
@@ -918,6 +1054,9 @@ Return ONLY in this exact JSON format:
 
             const result = await this.callGeminiAPIForBranch(data, taskId, taskTitle, taskDescription, taskPriority);
             
+            // Update rate limit tracking after successful API call
+            await this.updateRateLimit();
+            
             // Update only the branch result
             this.elements.branchResult.textContent = result.branchName || 'No branch name generated';
             
@@ -970,6 +1109,9 @@ Return ONLY in this exact JSON format:
             }
 
             const result = await this.callGeminiAPIForCommit(data, taskId, taskTitle, taskDescription, taskPriority);
+            
+            // Update rate limit tracking after successful API call
+            await this.updateRateLimit();
             
             // Update only the commit result
             this.elements.commitResult.textContent = result.commitMessage || 'No commit message generated';

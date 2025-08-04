@@ -10,6 +10,43 @@ export class TimeEstimationService {
             'mid': 'Mid-level Developer (2-5 years experience)', 
             'senior': 'Senior Developer (5+ years experience)'
         };
+        this.modelRateLimits = {
+            'gemini-2.5-pro': {
+                requests_per_minute: 5,
+                requests_per_day: 100,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.5-flash': {
+                requests_per_minute: 10,
+                requests_per_day: 250,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.5-flash-lite': {
+                requests_per_minute: 15,
+                requests_per_day: 1000,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.0-flash-exp': {
+                requests_per_minute: 15,
+                requests_per_day: 200,
+                tokens_per_minute: 1000000
+            },
+            'gemini-2.0-flash-lite': {
+                requests_per_minute: 30,
+                requests_per_day: 200,
+                tokens_per_minute: 1000000
+            },
+            'gemini-1.5-flash': {
+                requests_per_minute: 15,
+                requests_per_day: 1500,
+                tokens_per_minute: 1000000
+            },
+            'gemini-1.5-pro': {
+                requests_per_minute: 2,
+                requests_per_day: 50,
+                tokens_per_minute: 32000
+            }
+        };
     }
 
     async estimateTime(taskData) {
@@ -86,8 +123,8 @@ Guidelines:
 - Junior developers typically take 1.5-3x longer than senior developers
 - Mid-level developers typically take 1.2-2x longer than senior developers
 - Consider learning curve, debugging time, and mentorship needs
-- Be realistic but not overly conservative
-- Minimum estimation should be 15min, maximum should be reasonable`;
+- Be realistic
+- Minimum estimation should be 15min`;
 
         return prompt;
     }
@@ -103,7 +140,7 @@ Guidelines:
                 }]
             }],
             generationConfig: {
-                temperature: 0.3, // Lower temperature for more consistent estimations
+                temperature: 0.2, // Lower temperature for more consistent estimations
                 topK: 10,
                 topP: 0.8,
                 maxOutputTokens: 1000,
@@ -120,7 +157,21 @@ Guidelines:
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `API request failed: ${response.status}`);
+            let errorMessage = `API request failed: ${response.status}`;
+            
+            if (response.status === 500) {
+                errorMessage = 'Internal server error from Gemini API. This might be due to model overload or temporary issues. Please try again in a few moments or switch to a different model.';
+            } else if (response.status === 429) {
+                errorMessage = 'Rate limit exceeded. Please wait before making another request or switch to a different model.';
+            } else if (response.status === 400) {
+                errorMessage = 'Invalid request. Please check your API key and try again.';
+            } else if (response.status === 403) {
+                errorMessage = 'Access denied. Please check your API key permissions.';
+            } else if (errorData.error?.message) {
+                errorMessage = errorData.error.message;
+            }
+            
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -130,6 +181,10 @@ Guidelines:
         }
 
         return data.candidates[0].content.parts[0].text;
+    }
+
+    getModelRateLimits(modelName) {
+        return this.modelRateLimits[modelName] || this.modelRateLimits['gemini-2.5-flash'];
     }
 
     parseTimeEstimation(response) {
@@ -164,33 +219,95 @@ Guidelines:
             };
         } catch (error) {
             console.error('Failed to parse time estimation:', error);
-            throw new Error('Failed to parse AI response. Please try again.');
+            console.error('Raw AI response:', response);
+            
+            // Return the raw AI response in a clean, readable format
+            return {
+                junior: 'See AI Response',
+                mid: 'See AI Response', 
+                senior: 'See AI Response',
+                reasoning: response.trim(), // Show the raw response directly
+                timestamp: new Date().toISOString()
+            };
         }
     }
 
     async checkRateLimit() {
         const now = Date.now();
-        const rateLimitData = await Utils.getStorageData(['lastTimeEstimationRequest', 'timeEstimationRequestCount']);
+        const currentDate = new Date().toDateString();
+        const settings = await Utils.getStorageData(['geminiModel']);
+        const modelName = settings.geminiModel || 'gemini-2.5-flash';
+        const storageKey = `rateLimits_${modelName}`;
         
-        // Reset counter if more than 1 minute has passed
-        if (!rateLimitData.lastTimeEstimationRequest || now - rateLimitData.lastTimeEstimationRequest > 60000) {
-            await Utils.setStorageData({
-                lastTimeEstimationRequest: now,
-                timeEstimationRequestCount: 0
-            });
-            return true;
+        const rateLimitData = await Utils.getStorageData([storageKey]);
+        const modelLimits = rateLimitData[storageKey] || {
+            minuteRequests: [],
+            dayRequests: [],
+            currentDate: currentDate,
+            lastReset: now
+        };
+        
+        // Get rate limits for current model
+        const currentLimits = this.getModelRateLimits(modelName);
+        
+        // Clean old minute requests (older than 1 minute)
+        const oneMinuteAgo = now - 60 * 1000;
+        modelLimits.minuteRequests = modelLimits.minuteRequests.filter(time => time > oneMinuteAgo);
+        
+        // Clean day requests if date has changed (new day = reset daily limits)
+        if (modelLimits.currentDate !== currentDate) {
+            console.log(`Date changed from ${modelLimits.currentDate} to ${currentDate} - resetting daily rate limits for ${modelName}`);
+            modelLimits.dayRequests = []; // Clear all daily requests
+            modelLimits.currentDate = currentDate; // Update to current date
         }
         
-        // Allow up to 10 requests per minute
-        return (rateLimitData.timeEstimationRequestCount || 0) < 10;
+        // Check if we're within limits
+        const minuteCount = modelLimits.minuteRequests.length;
+        const dayCount = modelLimits.dayRequests.length;
+        
+        if (minuteCount >= currentLimits.requests_per_minute) {
+            throw new Error(`Rate limit exceeded for ${modelName}: ${minuteCount}/${currentLimits.requests_per_minute} requests per minute. Please wait or switch to a different model.`);
+        }
+        
+        if (dayCount >= currentLimits.requests_per_day) {
+            throw new Error(`Daily rate limit exceeded for ${modelName}: ${dayCount}/${currentLimits.requests_per_day} requests per day. Please wait until tomorrow or switch to a different model.`);
+        }
+        
+        return true;
     }
 
     async updateRateLimit() {
-        const rateLimitData = await Utils.getStorageData(['timeEstimationRequestCount']);
+        const now = Date.now();
+        const currentDate = new Date().toDateString(); // Get today's date string
+        const settings = await Utils.getStorageData(['geminiModel']);
+        const modelName = settings.geminiModel || 'gemini-2.5-flash';
+        const storageKey = `rateLimits_${modelName}`;
+        
+        const rateLimitData = await Utils.getStorageData([storageKey]);
+        const modelLimits = rateLimitData[storageKey] || {
+            minuteRequests: [],
+            dayRequests: [],
+            currentDate: currentDate,
+            lastReset: now
+        };
+        
+        // Update current date if needed
+        if (modelLimits.currentDate !== currentDate) {
+            modelLimits.dayRequests = []; // Reset daily requests for new day
+            modelLimits.currentDate = currentDate;
+        }
+        
+        // Add current request timestamp
+        modelLimits.minuteRequests.push(now);
+        modelLimits.dayRequests.push(now); // Store timestamp, but date comparison handles daily reset
+        modelLimits.lastReset = now;
+        
+        // Save updated limits
         await Utils.setStorageData({
-            timeEstimationRequestCount: (rateLimitData.timeEstimationRequestCount || 0) + 1,
-            lastTimeEstimationRequest: Date.now()
+            [storageKey]: modelLimits
         });
+        
+        console.log(`Rate limit updated for ${modelName}: ${modelLimits.minuteRequests.length} requests this minute, ${modelLimits.dayRequests.length} requests today (${currentDate})`);
     }
 
     // Convert time string to minutes for sorting/comparison

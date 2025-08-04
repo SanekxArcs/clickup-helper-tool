@@ -114,10 +114,14 @@ class GoogleMeetMattermostIntegration {
             // If meeting status changed, update Mattermost
             if (wasInMeeting !== this.isInMeeting || oldMeetingTitle !== this.meetingTitle) {
                 console.log(`Meeting status changed: ${this.isInMeeting ? 'joined' : 'left'}`, this.meetingTitle);
+                console.log('Previous state:', { wasInMeeting, oldMeetingTitle });
+                console.log('Current state:', { isInMeeting: this.isInMeeting, meetingTitle: this.meetingTitle });
                 
                 if (this.isInMeeting) {
+                    console.log('Calling setMeetingStatus...');
                     await this.setMeetingStatus();
                 } else {
+                    console.log('Calling clearMeetingStatus...');
                     await this.clearMeetingStatus();
                 }
             }
@@ -127,11 +131,14 @@ class GoogleMeetMattermostIntegration {
     }
 
     detectMeetingState() {
+        console.log('Detecting meeting state...');
+        
         // Method 1: Check for camera/microphone controls (most reliable)
         const micButton = document.querySelector('[data-tooltip*="microphone" i], [aria-label*="microphone" i], [title*="microphone" i]');
         const cameraButton = document.querySelector('[data-tooltip*="camera" i], [aria-label*="camera" i], [title*="camera" i]');
         
         if (micButton || cameraButton) {
+            console.log('Method 1: Found mic/camera controls - in meeting');
             this.lastMeetingCheck = Date.now();
             return true;
         }
@@ -176,29 +183,49 @@ class GoogleMeetMattermostIntegration {
         // Method 6: Check if we were recently in a meeting (grace period)
         const timeSinceLastCheck = Date.now() - this.lastMeetingCheck;
         if (timeSinceLastCheck < 10000) { // 10 second grace period
+            console.log('Method 6: Grace period active - still in meeting');
             return true;
         }
 
+        console.log('No meeting indicators found - not in meeting');
         return false;
+    }
+
+    extractMeetingRoomId() {
+        try {
+            // Extract room ID from Google Meet URL pattern: https://meet.google.com/xxx-xxxx-xxx
+            const url = window.location.href;
+            const roomIdMatch = url.match(/\/([a-z]{3}-[a-z]{4}-[a-z]{3})(?:\?|$)/);
+            return roomIdMatch ? roomIdMatch[1] : null;
+        } catch (error) {
+            console.error('Error extracting meeting room ID:', error);
+            return null;
+        }
     }
 
     extractMeetingTitle() {
         try {
+            console.log('Extracting meeting title...');
+            
             // Method 1: Try to get meeting name from the title bar or meeting info
             let title = document.querySelector('h1[data-meeting-title], .u6vdof, .ouH3xe')?.textContent?.trim();
+            console.log('Method 1 (title bar):', title);
             
             // Method 2: Try getting from page title
             if (!title) {
                 const pageTitle = document.title;
+                console.log('Page title:', pageTitle);
                 const titleMatch = pageTitle.match(/^(.+?)\s*[-–]\s*Google Meet$/);
                 if (titleMatch) {
                     title = titleMatch[1].trim();
+                    console.log('Method 2 (page title match):', title);
                 }
             }
 
             // Method 3: Try getting from meeting details
             if (!title) {
                 const meetingInfo = document.querySelector('[jsname="bvWbuf"], .VfPpkd-Bz112c-LgbsSe-OCA6Rb-C6yNHb')?.textContent?.trim();
+                console.log('Method 3 (meeting info):', meetingInfo);
                 if (meetingInfo && meetingInfo.length < 100) {
                     title = meetingInfo;
                 }
@@ -208,6 +235,16 @@ class GoogleMeetMattermostIntegration {
             if (!title) {
                 const urlParams = new URLSearchParams(window.location.search);
                 title = urlParams.get('meeting') || urlParams.get('title');
+                console.log('Method 4 (URL params):', title);
+            }
+
+            // Method 5: Use room ID as fallback title for quick meetings
+            if (!title) {
+                const roomId = this.extractMeetingRoomId();
+                if (roomId) {
+                    title = `Meet ${roomId}`;
+                    console.log('Method 5 (room ID fallback):', title);
+                }
             }
 
             // Clean up the title
@@ -219,10 +256,12 @@ class GoogleMeetMattermostIntegration {
                 }
             }
 
-            return title || '';
+            const finalTitle = title || 'Google Meet';
+            console.log('Final extracted title:', finalTitle);
+            return finalTitle;
         } catch (error) {
             console.error('Error extracting meeting title:', error);
-            return '';
+            return 'Google Meet';
         }
     }
 
@@ -231,13 +270,16 @@ class GoogleMeetMattermostIntegration {
             const settings = await this.getSettings();
             if (!settings.googleMeetIntegration) return;
 
+            const roomId = this.extractMeetingRoomId();
+            
             // Send message to background script to update Mattermost status
             chrome.runtime.sendMessage({
                 type: 'MATTERMOST_SET_MEETING_STATUS',
-                meetingTitle: this.meetingTitle
+                meetingTitle: this.meetingTitle,
+                roomId: roomId
             });
 
-            console.log('Meeting status set:', this.meetingTitle);
+            console.log('Meeting status set:', this.meetingTitle, 'Room ID:', roomId);
         } catch (error) {
             console.error('Failed to set meeting status:', error);
         }
@@ -245,15 +287,23 @@ class GoogleMeetMattermostIntegration {
 
     async clearMeetingStatus() {
         try {
+            console.log('Content script: clearMeetingStatus called');
             const settings = await this.getSettings();
-            if (!settings.googleMeetIntegration) return;
+            if (!settings.googleMeetIntegration) {
+                console.log('Google Meet integration disabled, not clearing status');
+                return;
+            }
 
+            const roomId = this.extractMeetingRoomId();
+            console.log('Content script: Clearing meeting status for room:', roomId);
+            
             // Send message to background script to clear Mattermost status
             chrome.runtime.sendMessage({
-                type: 'MATTERMOST_CLEAR_MEETING_STATUS'
+                type: 'MATTERMOST_CLEAR_MEETING_STATUS',
+                roomId: roomId
             });
 
-            console.log('Meeting status cleared');
+            console.log('Meeting status cleared for room:', roomId);
         } catch (error) {
             console.error('Failed to clear meeting status:', error);
         }

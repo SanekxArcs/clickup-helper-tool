@@ -210,40 +210,28 @@
                 </div>
             </div>
 
-            <!-- Active Mode -->
+            <!-- Google Meet History -->
             <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
-                <h3 class="text-lg font-medium text-gray-800 mb-4">Active Mode</h3>
+                <h3 class="text-lg font-medium text-gray-800 mb-4">Google Meet History</h3>
                 
                 <div class="space-y-4">
-                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <p class="font-medium text-gray-800">Auto-set status to Online</p>
-                            <p class="text-sm text-gray-600">Automatically set your status to "Online" at regular intervals</p>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" id="active-mode-toggle" class="toggle-switch">
-                            <label for="active-mode-toggle" class="ml-2 text-sm text-gray-700">Enable</label>
-                        </div>
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm text-gray-600">Track your Google Meet sessions</p>
+                        <button id="clear-meet-history-btn" class="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors text-sm">
+                            Clear
+                        </button>
                     </div>
-
-                    <div id="active-mode-settings" class="space-y-3 hidden">
-                        <div>
-                            <label for="active-mode-interval" class="block text-sm font-medium text-gray-700 mb-1">Active Mode Interval (minutes)</label>
-                            <input type="number" id="active-mode-interval" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" max="60" value="5">
-                            <p class="text-xs text-gray-500 mt-1">How often to set status to online (1-60 minutes)</p>
-                        </div>
-                        
-                        <div id="active-mode-status" class="p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm hidden">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <div class="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
-                                    <span>Active Mode is running</span>
-                                </div>
-                                <div class="text-xs font-mono bg-blue-100 px-2 py-1 rounded">
-                                    Next update: <span id="active-mode-timer">--:--</span>
-                                </div>
-                            </div>
-                        </div>
+                    
+                    <div id="meet-history-list" class="space-y-2 max-h-64 overflow-y-auto">
+                        <!-- Meet history entries will be populated here -->
+                    </div>
+                    
+                    <div id="meet-history-empty" class="text-center py-8 text-gray-500 hidden">
+                        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-sm font-medium text-gray-400">No Google Meet sessions recorded yet</p>
+                        <p class="text-xs text-gray-400 mt-1">Meet sessions will appear here when the integration is active</p>
                     </div>
                 </div>
             </div>

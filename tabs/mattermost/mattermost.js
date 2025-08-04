@@ -5,8 +5,7 @@ export class MattermostTab {
     constructor() {
         this.isAuthenticated = false;
         this.currentUser = null;
-        this.activeModeCountdownTimer = null;
-        this.nextUpdateTime = null;
+        this.meetHistory = [];
         this.initialize();
     }
 
@@ -16,8 +15,8 @@ export class MattermostTab {
             this.setupEventListeners();
             this.loadSavedSettings();
             
-            // Load active mode status
-            this.loadActiveModeStatus();
+            // Load Google Meet history
+            this.loadMeetHistory();
         } catch (error) {
             console.error('Failed to initialize Mattermost tab:', error);
         }
@@ -46,11 +45,8 @@ export class MattermostTab {
             document.getElementById('meet-settings').classList.toggle('hidden', !e.target.checked);
         });
 
-        // Active Mode toggle
-        const activeModeToggle = document.getElementById('active-mode-toggle');
-        if (activeModeToggle) {
-            activeModeToggle.addEventListener('change', this.activeModeToggleHandler.bind(this));
-        }
+        // Google Meet History
+        document.getElementById('clear-meet-history-btn')?.addEventListener('click', () => this.clearMeetHistory());
 
         // Settings buttons
         document.getElementById('save-settings-btn')?.addEventListener('click', () => this.saveSettings());
@@ -450,148 +446,93 @@ export class MattermostTab {
         }, 5000);
     }
 
-    async loadActiveModeStatus() {
+    async loadMeetHistory() {
         try {
-            const result = await chrome.storage.sync.get(['activeModeEnabled', 'activeModeInterval']);
-            const toggle = document.getElementById('active-mode-toggle');
-            const settings = document.getElementById('active-mode-settings');
-            const intervalInput = document.getElementById('active-mode-interval');
-            
-            if (toggle) {
-                toggle.checked = result.activeModeEnabled || false;
-            }
-            
-            if (intervalInput) {
-                intervalInput.value = result.activeModeInterval || 5;
-            }
-            
-            if (settings) {
-                settings.classList.toggle('hidden', !result.activeModeEnabled);
-            }
-            
-            this.updateActiveModeMessage(result.activeModeEnabled);
-            
-            // Start countdown timer if Active Mode is already enabled
-            if (result.activeModeEnabled) {
-                this.startActiveModeCountdown();
-            }
+            const result = await chrome.storage.sync.get(['meetHistory']);
+            this.meetHistory = result.meetHistory || [];
+            this.displayMeetHistory();
+            console.log('Meet history loaded:', this.meetHistory.length, 'entries');
         } catch (error) {
-            console.error('Error loading active mode status:', error);
+            console.error('Error loading meet history:', error);
+            this.meetHistory = [];
         }
     }
     
-    updateActiveModeMessage(enabled) {
-        const statusDiv = document.getElementById('active-mode-status');
-        if (statusDiv) {
-            statusDiv.classList.toggle('hidden', !enabled);
-        }
+    displayMeetHistory() {
+        const historyList = document.getElementById('meet-history-list');
+        const emptyState = document.getElementById('meet-history-empty');
         
-        if (enabled) {
-            this.startActiveModeCountdown();
-        } else {
-            this.stopActiveModeCountdown();
-        }
-    }
-    
-    async activeModeToggleHandler() {
-        try {
-            const toggle = document.getElementById('active-mode-toggle');
-            const settings = document.getElementById('active-mode-settings');
-            const intervalInput = document.getElementById('active-mode-interval');
-            
-            const enabled = toggle.checked;
-            const interval = parseInt(intervalInput.value) || 5;
-            
-            // Show/hide settings
-            if (settings) {
-                settings.classList.toggle('hidden', !enabled);
-            }
-            
-            // Save settings
-            await chrome.storage.sync.set({
-                activeModeEnabled: enabled,
-                activeModeInterval: interval
-            });
-            
-            // Send message to background script
-            chrome.runtime.sendMessage({
-                action: 'toggleActiveMode',
-                enabled: enabled,
-                interval: interval
-            });
-            
-            this.updateActiveModeMessage(enabled);
-            
-            const message = enabled ? 
-                `Active Mode enabled (${interval} minute intervals)` : 
-                'Active Mode disabled';
-            this.showMessage(message, 'success');
-        } catch (error) {
-            console.error('Error toggling active mode:', error);
-            this.showMessage('Error updating active mode', 'error');
-        }
-    }
-    
-    async startActiveModeCountdown() {
-        try {
-            const result = await chrome.storage.sync.get(['activeModeInterval']);
-            const interval = result.activeModeInterval || 5;
-            
-            // Calculate next update time (background script triggers immediately, then waits for interval)
-            this.nextUpdateTime = new Date(Date.now() + (interval * 60 * 1000));
-            
-            // Clear existing timer
-            if (this.activeModeCountdownTimer) {
-                clearInterval(this.activeModeCountdownTimer);
-            }
-            
-            // Start countdown timer (update every second)
-            this.activeModeCountdownTimer = setInterval(() => {
-                this.updateCountdownDisplay();
-            }, 1000);
-            
-            // Initial display update
-            this.updateCountdownDisplay();
-            
-            console.log('Frontend countdown timer started, next update at:', this.nextUpdateTime);
-        } catch (error) {
-            console.error('Error starting active mode countdown:', error);
-        }
-    }
-    
-    stopActiveModeCountdown() {
-        if (this.activeModeCountdownTimer) {
-            clearInterval(this.activeModeCountdownTimer);
-            this.activeModeCountdownTimer = null;
-        }
-        this.nextUpdateTime = null;
+        if (!historyList || !emptyState) return;
         
-        const timerElement = document.getElementById('active-mode-timer');
-        if (timerElement) {
-            timerElement.textContent = '--:--';
-        }
-    }
-    
-    updateCountdownDisplay() {
-        const timerElement = document.getElementById('active-mode-timer');
-        if (!timerElement || !this.nextUpdateTime) return;
-        
-        const now = new Date();
-        const timeLeft = this.nextUpdateTime - now;
-        
-        if (timeLeft <= 0) {
-            // Timer expired, restart countdown
-            this.startActiveModeCountdown();
+        if (this.meetHistory.length === 0) {
+            historyList.innerHTML = '';
+            emptyState.classList.remove('hidden');
             return;
         }
         
-        // Format time as MM:SS
-        const minutes = Math.floor(timeLeft / 60000);
-        const seconds = Math.floor((timeLeft % 60000) / 1000);
-        const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        emptyState.classList.add('hidden');
         
-        timerElement.textContent = formattedTime;
+        // Sort history by startTime (newest first)
+        const sortedHistory = [...this.meetHistory].sort((a, b) => b.startTime - a.startTime);
+        
+        historyList.innerHTML = sortedHistory.map(entry => this.createMeetHistoryEntryHTML(entry)).join('');
     }
+    
+    createMeetHistoryEntryHTML(entry) {
+        const timestamp = new Date(entry.startTime).toLocaleString();
+        const duration = entry.endTime ? this.formatDuration(entry.endTime - entry.startTime) : 'Ongoing';
+        
+        return `
+            <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        <span class="font-medium text-gray-800">${entry.title || 'Google Meet Session'}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${timestamp}</span>
+                </div>
+                <div class="text-sm text-gray-600">
+                    <p>Status: ${entry.status || 'Do Not Disturb'}</p>
+                    <p>Duration: ${duration}</p>
+                    ${entry.roomId ? `<p class="text-xs text-gray-500">Room: ${entry.roomId}</p>` : ''}
+                    ${entry.statusText ? `<p>Message: ${entry.statusText}</p>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    formatDuration(milliseconds) {
+        const minutes = Math.floor(milliseconds / 60000);
+        const hours = Math.floor(minutes / 60);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes % 60}m`;
+        }
+        return `${minutes}m`;
+    }
+    
+
+    
+    async saveMeetHistory() {
+        try {
+            await chrome.storage.sync.set({ 
+                meetHistory: this.meetHistory
+            });
+        } catch (error) {
+            console.error('Error saving meet history:', error);
+        }
+    }
+    
+    async clearMeetHistory() {
+        this.meetHistory = [];
+        await chrome.storage.sync.set({ 
+            meetHistory: []
+        });
+        this.displayMeetHistory();
+        this.showMessage('Google Meet history cleared', 'success');
+    }
+
+
 
     showError(message, errorElement) {
         if (errorElement) {
@@ -627,11 +568,38 @@ export class MattermostTab {
 
     // Public API for integration with other parts of the extension
     async setMeetingStatus(meetingTitle = '') {
-        return await mattermostAPI.setMeetingStatus(meetingTitle);
+        try {
+            // Get meeting settings
+            const settings = await chrome.storage.sync.get(['meetingStatus', 'meetingEmoji', 'meetingText', 'showMeetingTitle']);
+            const status = settings.meetingStatus || 'dnd';
+            const emoji = settings.meetingEmoji || 'calendar';
+            let statusText = settings.meetingText || 'In a meeting';
+            
+            // Add meeting title if enabled and provided
+            if (settings.showMeetingTitle && meetingTitle) {
+                statusText = `${statusText}: ${meetingTitle}`;
+            }
+            
+            // Set status in Mattermost
+            const result = await mattermostAPI.setCustomStatus(status, emoji, statusText);
+            
+            return result;
+        } catch (error) {
+            console.error('Error setting meeting status:', error);
+            throw error;
+        }
     }
 
     async clearMeetingStatus() {
-        return await mattermostAPI.clearMeetingStatus();
+        try {
+            // Clear status in Mattermost
+            const result = await mattermostAPI.clearCustomStatus();
+            
+            return result;
+        } catch (error) {
+            console.error('Error clearing meeting status:', error);
+            throw error;
+        }
     }
 
     // History management methods

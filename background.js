@@ -153,10 +153,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log('Task data extracted:', request.data);
     } else if (request.type === 'MATTERMOST_SET_MEETING_STATUS') {
         // Handle setting meeting status in Mattermost
-        handleMattermostMeetingStatus(request.meetingTitle);
+        handleMattermostMeetingStatus(request.meetingTitle, request.roomId);
     } else if (request.type === 'MATTERMOST_CLEAR_MEETING_STATUS') {
         // Handle clearing meeting status in Mattermost
-        handleMattermostClearStatus();
+        handleMattermostClearStatus(request.roomId);
     } else if (request.type === 'MATTERMOST_SET_CUSTOM_STATUS') {
         // Handle setting custom status in Mattermost
         handleMattermostCustomStatus(request.emoji, request.text, sendResponse);
@@ -172,8 +172,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Mattermost API integration functions
-async function handleMattermostMeetingStatus(meetingTitle = '') {
+async function handleMattermostMeetingStatus(meetingTitle = '', roomId = null) {
     try {
+        console.log('Background: Received meeting status request:', { meetingTitle, roomId });
+        
         const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
         const settings = stored.mattermostSettings || {};
         
@@ -236,13 +238,57 @@ async function handleMattermostMeetingStatus(meetingTitle = '') {
         });
 
         console.log('Mattermost meeting status set:', { status, emoji, text });
+        
+        // Record meeting history directly in storage
+        try {
+            const result = await chrome.storage.sync.get(['meetHistory']);
+            const history = result.meetHistory || [];
+            
+            // Use roomId as unique identifier, fallback to timestamp if no roomId
+            const meetingId = roomId || Date.now().toString();
+            
+            // Check if there's already an ongoing meeting with this roomId
+            const existingMeeting = history.find(entry => entry.roomId === meetingId && !entry.endTime);
+            if (existingMeeting) {
+                console.log('Meeting with room ID already in progress:', meetingId);
+                return;
+            }
+            
+            const finalTitle = meetingTitle || (roomId ? `Meet ${roomId}` : 'Google Meet');
+            console.log('Background: Creating history entry with title:', finalTitle);
+            
+            const entry = {
+                id: Date.now().toString(),
+                roomId: meetingId,
+                title: finalTitle,
+                startTime: Date.now(),
+                endTime: null
+            };
+            
+            history.push(entry);
+            
+            // Keep only last 50 entries to prevent storage bloat
+            if (history.length > 50) {
+                history.splice(0, history.length - 50);
+            }
+            
+            await chrome.storage.sync.set({ 
+                meetHistory: history
+            });
+            
+            console.log('Meeting history entry added:', entry);
+        } catch (error) {
+            console.error('Failed to record meeting history:', error);
+        }
     } catch (error) {
         console.error('Failed to set Mattermost meeting status:', error);
     }
 }
 
-async function handleMattermostClearStatus() {
+async function handleMattermostClearStatus(roomId = null) {
     try {
+        console.log('Background: Received clear meeting status request for room:', roomId);
+        
         const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
         const settings = stored.mattermostSettings || {};
         const token = stored.MMAccessToken || stored.MMAuthToken;
@@ -288,6 +334,32 @@ async function handleMattermostClearStatus() {
         });
 
         console.log('Mattermost status cleared and set to online');
+        
+        // Update meeting history directly in storage
+        try {
+            const result = await chrome.storage.sync.get(['meetHistory']);
+            const history = result.meetHistory || [];
+            
+            if (roomId) {
+                // Find the ongoing meeting with this roomId
+                const entryIndex = history.findIndex(entry => entry.roomId === roomId && !entry.endTime);
+                if (entryIndex !== -1) {
+                    history[entryIndex].endTime = Date.now();
+                    
+                    await chrome.storage.sync.set({ 
+                        meetHistory: history
+                    });
+                    
+                    console.log('Meeting history entry updated:', history[entryIndex]);
+                } else {
+                    console.log('No ongoing meeting found with room ID:', roomId);
+                }
+            } else {
+                console.log('No room ID provided for meeting end');
+            }
+        } catch (error) {
+            console.error('Failed to update meeting history:', error);
+        }
     } catch (error) {
         console.error('Failed to clear Mattermost status:', error);
     }

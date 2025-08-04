@@ -7,6 +7,43 @@ export class SettingsTab {
             requests_per_minute: 15,
             requests_per_day: 1500
         };
+        this.modelRateLimits = {
+            'gemini-2.5-pro': {
+                requests_per_minute: 5,
+                requests_per_day: 100,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.5-flash': {
+                requests_per_minute: 10,
+                requests_per_day: 250,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.5-flash-lite': {
+                requests_per_minute: 15,
+                requests_per_day: 1000,
+                tokens_per_minute: 250000
+            },
+            'gemini-2.0-flash-exp': {
+                requests_per_minute: 15,
+                requests_per_day: 200,
+                tokens_per_minute: 1000000
+            },
+            'gemini-2.0-flash-lite': {
+                requests_per_minute: 30,
+                requests_per_day: 200,
+                tokens_per_minute: 1000000
+            },
+            'gemini-1.5-flash': {
+                requests_per_minute: 15,
+                requests_per_day: 1500,
+                tokens_per_minute: 1000000
+            },
+            'gemini-1.5-pro': {
+                requests_per_minute: 2,
+                requests_per_day: 50,
+                tokens_per_minute: 32000
+            }
+        };
         this.initialize();
     }
 
@@ -65,6 +102,10 @@ export class SettingsTab {
 
         if (this.elements.temperature) {
             this.elements.temperature.addEventListener('input', () => this.updateTemperatureDisplay());
+        }
+
+        if (this.elements.geminiModel) {
+            this.elements.geminiModel.addEventListener('change', () => this.updateRateLimitsDisplay());
         }
 
         if (this.elements.openShortcutsPage) {
@@ -135,7 +176,7 @@ export class SettingsTab {
         }
         
         if (this.elements.geminiModel) {
-            this.elements.geminiModel.value = data.geminiModel || 'gemini-2.0-flash-exp';
+            this.elements.geminiModel.value = data.geminiModel || 'gemini-2.5-flash';
         }
         
         if (this.elements.temperature) {
@@ -146,6 +187,9 @@ export class SettingsTab {
         if (this.elements.timeEstimationPrompt) {
             this.elements.timeEstimationPrompt.value = data.timeEstimationPrompt || this.getDefaultTimeEstimationPrompt();
         }
+
+        // Update rate limits display after loading model
+        this.updateRateLimitsDisplay();
 
         // Load rules data
         if (this.elements.branchRules) {
@@ -376,13 +420,22 @@ export class SettingsTab {
         return true;
     }
 
+    getCurrentRateLimits() {
+        const selectedModel = this.elements.geminiModel ? this.elements.geminiModel.value : 'gemini-2.5-flash';
+        return this.modelRateLimits[selectedModel] || this.modelRateLimits['gemini-2.5-flash'];
+    }
+
     async updateRateLimitsDisplay() {
         const now = Date.now();
+        const selectedModel = this.elements.geminiModel ? this.elements.geminiModel.value : 'gemini-2.5-flash';
+        const currentLimits = this.getCurrentRateLimits();
+        const storageKey = `rateLimits_${selectedModel}`;
+        
         const data = await new Promise(resolve => {
-            chrome.storage.local.get(['rateLimitData'], resolve);
+            chrome.storage.local.get([storageKey], resolve);
         });
 
-        let rateLimitData = data.rateLimitData || {
+        let rateLimitData = data[storageKey] || {
             minuteRequests: [],
             dayRequests: [],
             lastReset: now
@@ -398,17 +451,17 @@ export class SettingsTab {
         const minuteCount = rateLimitData.minuteRequests.length;
         const dayCount = rateLimitData.dayRequests.length;
 
-        // Update usage display
+        // Update usage display with dynamic limits
         if (this.elements.minuteUsage) {
-            this.elements.minuteUsage.textContent = `${minuteCount} / ${this.rateLimits.requests_per_minute}`;
+            this.elements.minuteUsage.textContent = `${minuteCount} / ${currentLimits.requests_per_minute}`;
         }
         if (this.elements.dayUsage) {
-            this.elements.dayUsage.textContent = `${dayCount} / ${this.rateLimits.requests_per_day}`;
+            this.elements.dayUsage.textContent = `${dayCount} / ${currentLimits.requests_per_day}`;
         }
 
-        // Update progress bars
-        const minutePercent = (minuteCount / this.rateLimits.requests_per_minute) * 100;
-        const dayPercent = (dayCount / this.rateLimits.requests_per_day) * 100;
+        // Update progress bars with dynamic limits
+        const minutePercent = (minuteCount / currentLimits.requests_per_minute) * 100;
+        const dayPercent = (dayCount / currentLimits.requests_per_day) * 100;
 
         if (this.elements.minuteBar) {
             this.elements.minuteBar.style.width = minutePercent + '%';
@@ -423,7 +476,7 @@ export class SettingsTab {
         // Update reset time display
         const nextReset = this.getNextResetTime(rateLimitData.minuteRequests);
         if (this.elements.rateLimitReset) {
-            if (nextReset && minuteCount >= this.rateLimits.requests_per_minute) {
+            if (nextReset && minuteCount >= currentLimits.requests_per_minute) {
                 this.elements.rateLimitReset.innerHTML = `<small>Minute limit resets in ${nextReset}</small>`;
             } else {
                 this.elements.rateLimitReset.innerHTML = '<small>Limits reset automatically</small>';

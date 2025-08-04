@@ -8,9 +8,13 @@
 <div class="mb-4">
     <label for="geminiModel" class="block mb-2 font-semibold text-gray-700">Gemini Model:</label>
     <select id="geminiModel" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
-        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro (5 RPM, 100 RPD)</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash (10 RPM, 250 RPD)</option>
+        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (15 RPM, 1,000 RPD)</option>
+        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (15 RPM, 200 RPD)</option>
+        <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (30 RPM, 200 RPD)</option>
+        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy)</option>
+        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Legacy)</option>
     </select>
 </div>
 
@@ -30,7 +34,7 @@
 
 <!-- Rate Limits Display -->
 <div class="mb-4">
-    <label class="block mb-2 font-semibold text-gray-700">Rate Limits (Free Tier):</label>
+    <label class="block mb-2 font-semibold text-gray-700">Rate Limits (Based on Selected Model):</label>
     <div id="rateLimitsDisplay" class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-1">
         <div class="flex items-center mb-3 gap-2.5 last:mb-2">
             <span class="font-semibold text-gray-700 min-w-[80px] text-xs">Per Minute:</span>
@@ -47,7 +51,7 @@
             </div>
         </div>
         <div class="text-center mt-2">
-            <small id="rateLimitReset" class="text-gray-500 text-xs">Limits reset automatically</small>
+            <small id="rateLimitReset" class="text-gray-500 text-xs">Rate limits update automatically based on selected model</small>
         </div>
     </div>
 </div>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Meet History - Fixed</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 5px; padding: 10px; }
+        #output { margin-top: 20px; border: 1px solid #ccc; padding: 10px; max-height: 400px; overflow-y: auto; }
+        .entry { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Google Meet History Test - Fixed Version</h1>
+    <button id="simulate-meeting">Simulate Meeting Start</button>
+    <button id="simulate-titled-meeting">Simulate Meeting with Custom Title</button>
+    <button id="end-meeting">End Current Meeting</button>
+    <button id="check-storage">Check Storage</button>
+    <button id="clear-storage">Clear Storage</button>
+    <input type="text" id="custom-title" placeholder="Enter custom meeting title" style="margin: 5px; padding: 8px; width: 250px;">
+    <div id="output"></div>
+
+    <script>
+        let currentMeetingId = null;
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            console.log(message);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function simulateMeeting() {
+            // Simulate what the background script does
+            chrome.storage.sync.get(['meetHistory'], (result) => {
+                const history = result.meetHistory || [];
+                const roomId = 'test-room-' + Date.now();
+                
+                // Check if there's already an ongoing meeting with this roomId
+                const existingMeeting = history.find(entry => entry.roomId === roomId && !entry.endTime);
+                if (existingMeeting) {
+                    log('❌ Meeting already in progress with room ID: ' + roomId);
+                    return;
+                }
+                
+                const entry = {
+                    id: Date.now().toString(),
+                    roomId: roomId,
+                    title: 'Weekly Team Standup - ' + new Date().toLocaleTimeString(),
+                    startTime: Date.now(),
+                    endTime: null
+                };
+                
+                history.push(entry);
+                currentMeetingId = entry.id;
+                
+                // Keep only last 50 entries
+                if (history.length > 50) {
+                    history.splice(0, history.length - 50);
+                }
+                
+                chrome.storage.sync.set({ 
+                    meetHistory: history
+                }, () => {
+                    log('✅ Meeting started: ' + entry.title);
+                    log('📝 Room ID: ' + roomId);
+                    displayHistory();
+                });
+            });
+        }
+        
+        function endCurrentMeeting() {
+            chrome.storage.sync.get(['meetHistory'], (result) => {
+                const history = result.meetHistory || [];
+                
+                // Find the most recent ongoing meeting
+                const ongoingMeeting = history.find(entry => !entry.endTime);
+                
+                if (!ongoingMeeting) {
+                    log('❌ No current meeting to end');
+                    return;
+                }
+                
+                const entryIndex = history.findIndex(entry => entry.id === ongoingMeeting.id);
+                
+                if (entryIndex !== -1) {
+                    history[entryIndex].endTime = Date.now();
+                    
+                    chrome.storage.sync.set({ 
+                        meetHistory: history
+                    }, () => {
+                        const duration = Math.round((history[entryIndex].endTime - history[entryIndex].startTime) / 1000);
+                        log('🏁 Meeting ended: ' + history[entryIndex].title);
+                        log('⏱️ Duration: ' + duration + ' seconds');
+                        currentMeetingId = null;
+                        displayHistory();
+                    });
+                } else {
+                    log('❌ Could not find meeting to end');
+                }
+            });
+        }
+        
+        function checkStorage() {
+            chrome.storage.sync.get(['meetHistory'], (result) => {
+                const history = result.meetHistory || [];
+                const ongoingMeetings = history.filter(entry => !entry.endTime);
+                
+                log('=== 📊 STORAGE CHECK ===');
+                log('📈 Total entries: ' + history.length);
+                log('🔄 Ongoing meetings: ' + ongoingMeetings.length);
+                if (ongoingMeetings.length > 0) {
+                    ongoingMeetings.forEach(meeting => {
+                        log('  - ' + meeting.title + ' (Room: ' + meeting.roomId + ')');
+                    });
+                }
+                
+                if (history.length === 0) {
+                    log('📭 No history entries found');
+                    return;
+                }
+                
+                history.forEach((entry, index) => {
+                    const startTime = new Date(entry.startTime).toLocaleString();
+                    const endTime = entry.endTime ? new Date(entry.endTime).toLocaleString() : 'Ongoing';
+                    const duration = entry.endTime ? 
+                        Math.round((entry.endTime - entry.startTime) / 1000) + 's' : 
+                        'Ongoing';
+                    
+                    log(`<div class="entry">
+                        <strong>${index + 1}. ${entry.title}</strong><br>
+                        📅 Start: ${startTime}<br>
+                        🏁 End: ${endTime}<br>
+                        ⏱️ Duration: ${duration}<br>
+                        🆔 ID: ${entry.id}
+                    </div>`);
+                });
+            });
+        }
+        
+        function simulateCustomTitledMeeting() {
+            const customTitle = document.getElementById('custom-title').value.trim();
+            if (!customTitle) {
+                log('❌ Please enter a custom title first');
+                return;
+            }
+            
+            chrome.storage.sync.get(['meetHistory'], (result) => {
+                const history = result.meetHistory || [];
+                const roomId = 'custom-room-' + Date.now();
+                
+                // Check if there's already an ongoing meeting with this roomId
+                const existingMeeting = history.find(entry => entry.roomId === roomId && !entry.endTime);
+                if (existingMeeting) {
+                    log('❌ Meeting already in progress with room ID: ' + roomId);
+                    return;
+                }
+                
+                const entry = {
+                    id: Date.now().toString(),
+                    roomId: roomId,
+                    title: customTitle,
+                    startTime: Date.now(),
+                    endTime: null
+                };
+                
+                history.push(entry);
+                currentMeetingId = entry.id;
+                
+                if (history.length > 50) {
+                    history.splice(0, history.length - 50);
+                }
+                
+                chrome.storage.sync.set({ 
+                    meetHistory: history
+                }, () => {
+                    log(`✅ Custom meeting started: "${customTitle}"`);
+                    log(`📝 Room ID: ${roomId}`);
+                    log(`🆔 Meeting ID: ${entry.id}`);
+                    document.getElementById('custom-title').value = '';
+                });
+            });
+        }
+        
+        function clearStorage() {
+            chrome.storage.sync.set({ 
+                meetHistory: [],
+                currentMeetingEntryId: null
+            }, () => {
+                log('🗑️ Storage cleared');
+                currentMeetingId = null;
+            });
+        }
+        
+        document.getElementById('simulate-meeting').addEventListener('click', simulateMeeting);
+        document.getElementById('simulate-titled-meeting').addEventListener('click', simulateCustomTitledMeeting);
+        document.getElementById('end-meeting').addEventListener('click', endCurrentMeeting);
+        document.getElementById('check-storage').addEventListener('click', checkStorage);
+        document.getElementById('clear-storage').addEventListener('click', clearStorage);
+        
+        // Initial storage check
+        log('🚀 Test page loaded');
+        checkStorage();
+    </script>
+</body>
+</html>
