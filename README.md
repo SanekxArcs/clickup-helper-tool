@@ -344,68 +344,12 @@ Follow conventional commit format when possible
 - **Module System**: ES6 imports/exports for clean code organization
 - **Background Processing**: Service worker for Google Meet integration
 
-## 🚀 Version History
-
-### **v3.0.0** - Current (Mattermost Integration)
-- ✅ **Mattermost Integration**: Complete Mattermost status management
-- ✅ **Custom Status Presets**: Create and manage multiple custom status presets
-- ✅ **Google Meet Integration**: Automatic status updates during meetings
-- ✅ **Meeting History**: Comprehensive tracking of Google Meet sessions
-- ✅ **Advanced Authentication**: Support for password and token authentication
-- ✅ **Duplicate Prevention**: Advanced safeguards for meeting history
-- ✅ **Cleanup Tools**: Utilities to manage duplicate meeting entries
-- ✅ **Enhanced UI**: Modern interface for Mattermost features
-
-### **v2.2.0** - Enhanced Generation Features
-- ✅ **Individual Regeneration**: Separate regeneration buttons for branch names and commit messages
-- ✅ **Smart Regeneration**: Regenerate only the component you need while preserving the other
-- ✅ **Batch Regeneration**: Regenerate both branch and commit with a single "Regenerate Both" button
-- ✅ **History Integration**: Regenerated content automatically updates history entries
-- ✅ **Enhanced UX**: Improved button layout with clear visual separation between copy and regenerate actions
-- ✅ **Loading States**: All regeneration buttons properly disabled during API calls
-- ✅ **Error Handling**: Comprehensive error handling for individual regeneration failures
-
-### **v2.1.0** - Enhanced Development Features
-- ✅ **Time Estimation**: AI-powered task time estimation for Junior/Mid/Senior developers
-- ✅ **Environment Context Menu**: Right-click menu for quick environment switching (dev/test/prod)
-- ✅ **Smart URL Handling**: Preserves paths, queries, and fragments when switching environments
-- ✅ **Enhanced UX**: Improved interface with better visual feedback and responsiveness
-- ✅ **Debug Tools**: Comprehensive error handling and debugging capabilities
-
-### **v2.0.0** - Modular Architecture
-- ✅ **Complete Modularization**: Separated tabs into individual folders and files
-- ✅ **Advanced Auto-Search**: ClickUp and GitLab integration with history-first approach
-- ✅ **Auto-Tab Switching**: Automatically switches to History tab when tasks found
-- ✅ **GitLab Integration**: Full merge request URL tracking and branch name synchronization
-- ✅ **Visual Highlighting**: Auto-highlights matching items in History tab
-- ✅ **Enhanced History**: 12 status categories, edit modal, search/filter
-- ✅ **Smart Notifications**: Context-aware toast messages for all operations
-- ✅ **Priority Detection**: Automatic urgent/high priority detection and prefixes
-- ✅ **Modern UI**: Improved styling, animations, and user experience
-
-### **v1.0.0** - Legacy (Monolithic)
-- Basic generation functionality
-- Simple history management
-- Manual data entry
-- Single-file architecture
 
 ## 🎯 Roadmap
 
 ### **Near Term**
-- Enhanced Mattermost features (team status, channel integration)
-- Additional Google Meet features (calendar integration, meeting notes)
 - Improved duplicate detection and cleanup tools
 - Advanced meeting analytics and reporting
-- Keyboard shortcuts restoration
-
-### **Long Term**
-- Git integration for direct branch creation
-- Team collaboration features
-- Additional AI model support (OpenAI, Claude)
-- Enterprise features and SSO
-- Multi-repository management
-- Advanced analytics and reporting
-- Slack and Microsoft Teams integration
 
 ## 📋 API Usage
 
