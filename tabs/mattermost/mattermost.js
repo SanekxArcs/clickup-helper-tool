@@ -51,7 +51,10 @@ export class MattermostTab {
 
         // Google Meet integration toggle
         document.getElementById('google-meet-integration')?.addEventListener('change', (e) => {
-            document.getElementById('meet-settings').classList.toggle('hidden', !e.target.checked);
+            const meetSettings = document.getElementById('meet-settings');
+            if (meetSettings) {
+                meetSettings.classList.toggle('hidden', !e.target.checked);
+            }
         });
 
         // Google Meet History
@@ -59,6 +62,8 @@ export class MattermostTab {
 
         // Settings buttons
         document.getElementById('save-settings-btn')?.addEventListener('click', () => this.saveSettings());
+        document.getElementById('save-manual-settings-btn')?.addEventListener('click', () => this.saveSettings());
+        document.getElementById('update-status-btn')?.addEventListener('click', () => this.updateManualStatus());
         document.getElementById('test-connection-btn')?.addEventListener('click', () => this.testConnection());
         document.getElementById('history-btn')?.addEventListener('click', () => this.showHistoryModal());
 
@@ -459,14 +464,22 @@ export class MattermostTab {
 
     async saveSettings() {
         try {
+            const emojiInput = document.getElementById('emoji-input');
+            const statusTextInput = document.getElementById('status-text-input');
+            const showMeetingTitleInput = document.getElementById('show-meeting-title');
+            const googleMeetIntegrationInput = document.getElementById('google-meet-integration');
+            const meetingStatusInput = document.getElementById('meeting-status');
+            const meetingEmojiInput = document.getElementById('meeting-emoji');
+            const meetingTextInput = document.getElementById('meeting-text');
+            
             const settings = {
-                emoji: document.getElementById('emoji-input').value.trim() || 'calendar',
-                statusText: document.getElementById('status-text-input').value.trim(),
-                showMeetingTitle: document.getElementById('show-meeting-title').checked,
-                googleMeetIntegration: document.getElementById('google-meet-integration').checked,
-                meetingStatus: document.getElementById('meeting-status').value,
-                meetingEmoji: document.getElementById('meeting-emoji').value.trim() || 'calendar',
-                meetingText: document.getElementById('meeting-text').value.trim() || 'In a meeting'
+                emoji: emojiInput ? (emojiInput.value.trim() || 'calendar') : 'calendar',
+                statusText: statusTextInput ? statusTextInput.value.trim() : '',
+                showMeetingTitle: showMeetingTitleInput ? showMeetingTitleInput.checked : false,
+                googleMeetIntegration: googleMeetIntegrationInput ? googleMeetIntegrationInput.checked : false,
+                meetingStatus: meetingStatusInput ? meetingStatusInput.value : 'dnd',
+                meetingEmoji: meetingEmojiInput ? (meetingEmojiInput.value.trim() || 'calendar') : 'calendar',
+                meetingText: meetingTextInput ? (meetingTextInput.value.trim() || 'In a meeting') : 'In a meeting'
             };
 
             // Save status duration separately
@@ -488,17 +501,33 @@ export class MattermostTab {
             const settings = await mattermostAPI.getSettings();
             const storageData = await chrome.storage.sync.get(['statusDuration']);
 
-            // Load saved values
-            if (settings.emoji) document.getElementById('emoji-input').value = settings.emoji;
-            if (settings.statusText) document.getElementById('status-text-input').value = settings.statusText;
-            if (settings.showMeetingTitle !== undefined) document.getElementById('show-meeting-title').checked = settings.showMeetingTitle;
-            if (settings.googleMeetIntegration !== undefined) {
-                document.getElementById('google-meet-integration').checked = settings.googleMeetIntegration;
-                document.getElementById('meet-settings').classList.toggle('hidden', !settings.googleMeetIntegration);
+            // Load saved values with null checks
+            const emojiInput = document.getElementById('emoji-input');
+            if (emojiInput && settings.emoji) emojiInput.value = settings.emoji;
+            
+            const statusTextInput = document.getElementById('status-text-input');
+            if (statusTextInput && settings.statusText) statusTextInput.value = settings.statusText;
+            
+            const showMeetingTitleInput = document.getElementById('show-meeting-title');
+            if (showMeetingTitleInput && settings.showMeetingTitle !== undefined) showMeetingTitleInput.checked = settings.showMeetingTitle;
+            
+            const googleMeetIntegrationInput = document.getElementById('google-meet-integration');
+            const meetSettingsElement = document.getElementById('meet-settings');
+            if (googleMeetIntegrationInput && settings.googleMeetIntegration !== undefined) {
+                googleMeetIntegrationInput.checked = settings.googleMeetIntegration;
+                if (meetSettingsElement) {
+                    meetSettingsElement.classList.toggle('hidden', !settings.googleMeetIntegration);
+                }
             }
-            if (settings.meetingStatus) document.getElementById('meeting-status').value = settings.meetingStatus;
-            if (settings.meetingEmoji) document.getElementById('meeting-emoji').value = settings.meetingEmoji;
-            if (settings.meetingText) document.getElementById('meeting-text').value = settings.meetingText;
+            
+            const meetingStatusInput = document.getElementById('meeting-status');
+            if (meetingStatusInput && settings.meetingStatus) meetingStatusInput.value = settings.meetingStatus;
+            
+            const meetingEmojiInput = document.getElementById('meeting-emoji');
+            if (meetingEmojiInput && settings.meetingEmoji) meetingEmojiInput.value = settings.meetingEmoji;
+            
+            const meetingTextInput = document.getElementById('meeting-text');
+            if (meetingTextInput && settings.meetingText) meetingTextInput.value = settings.meetingText;
             
             // Load status duration
             const durationInput = document.getElementById('status-duration-input');
@@ -794,6 +823,54 @@ export class MattermostTab {
         } catch (error) {
             console.error('Error clearing meeting status:', error);
             throw error;
+        }
+    }
+
+    async updateManualStatus() {
+        if (!this.isAuthenticated) {
+            this.showMessage('Please authenticate first', 'error');
+            return;
+        }
+
+        try {
+            const statusSelect = document.getElementById('manual-status-select');
+            const emojiInput = document.getElementById('emoji-input');
+            const statusTextInput = document.getElementById('status-text-input');
+            const durationInput = document.getElementById('status-duration-input');
+
+            if (!statusSelect) {
+                this.showMessage('Status selection not found', 'error');
+                return;
+            }
+
+            const status = statusSelect.value;
+            const emoji = emojiInput ? emojiInput.value.trim() : '';
+            const statusText = statusTextInput ? statusTextInput.value.trim() : '';
+            const duration = durationInput ? parseInt(durationInput.value) || 0 : 0;
+
+            const stored = await mattermostAPI.getStoredAuth();
+            const token = stored.MMAccessToken || stored.MMAuthToken;
+            const userId = stored.MMUserId;
+
+            // Update availability status
+            await mattermostAPI.updateUserStatus(userId, status, token);
+
+            // Update custom status if emoji or text provided
+            if (emoji || statusText) {
+                await mattermostAPI.updateCustomStatus(userId, emoji, statusText, token, duration);
+            }
+
+            let message = `Status updated to ${status}`;
+            if (emoji || statusText) {
+                message += ` with custom status`;
+                if (duration > 0) {
+                    message += ` (Duration: ${duration} minutes)`;
+                }
+            }
+            this.showMessage(message, 'success');
+        } catch (error) {
+            console.error('Failed to update manual status:', error);
+            this.showMessage('Failed to update status', 'error');
         }
     }
 
