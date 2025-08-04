@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cleanup Meeting History Duplicates</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .button {
+            background-color: #007cba;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background-color: #005a87;
+        }
+        .danger {
+            background-color: #dc3545;
+        }
+        .danger:hover {
+            background-color: #c82333;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Meeting History Cleanup Tool</h1>
+        
+        <div class="warning">
+            <strong>Warning:</strong> This tool will remove duplicate meeting entries and keep only the best entry for each meeting room. Make sure to backup your data if needed.
+        </div>
+        
+        <div style="text-align: center;">
+            <button class="button" onclick="viewHistory()">View Current History</button>
+            <button class="button danger" onclick="cleanupDuplicates()">Cleanup Duplicates</button>
+            <button class="button" onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        function viewHistory() {
+            chrome.storage.sync.get(['meetHistory'], (result) => {
+                const history = result.meetHistory || [];
+                log(`Found ${history.length} total entries in history`);
+                
+                // Group by roomId to show duplicates
+                const grouped = {};
+                history.forEach(entry => {
+                    if (!grouped[entry.roomId]) {
+                        grouped[entry.roomId] = [];
+                    }
+                    grouped[entry.roomId].push(entry);
+                });
+                
+                Object.keys(grouped).forEach(roomId => {
+                    const entries = grouped[roomId];
+                    if (entries.length > 1) {
+                        log(`Room ${roomId}: ${entries.length} duplicate entries`);
+                        entries.forEach((entry, index) => {
+                            const duration = entry.endTime ? 
+                                Math.floor((entry.endTime - entry.startTime) / 60000) + 'm' : 
+                                'Ongoing';
+                            const date = new Date(entry.startTime).toLocaleString();
+                            log(`  ${index + 1}. ${entry.title} - ${date} - Duration: ${duration}`);
+                        });
+                    }
+                });
+            });
+        }
+
+        function cleanupDuplicates() {
+            chrome.storage.sync.get(['meetHistory'], (result) => {
+                const history = result.meetHistory || [];
+                log(`Starting cleanup of ${history.length} entries...`);
+                
+                // Group entries by roomId
+                const groupedByRoom = {};
+                history.forEach(entry => {
+                    if (!groupedByRoom[entry.roomId]) {
+                        groupedByRoom[entry.roomId] = [];
+                    }
+                    groupedByRoom[entry.roomId].push(entry);
+                });
+                
+                // Process each room's entries
+                const cleanedHistory = [];
+                
+                Object.keys(groupedByRoom).forEach(roomId => {
+                    const roomEntries = groupedByRoom[roomId];
+                    
+                    if (roomEntries.length === 1) {
+                        // Single entry, keep it
+                        cleanedHistory.push(roomEntries[0]);
+                    } else if (roomEntries.length > 1) {
+                        log(`Processing ${roomEntries.length} duplicates for room ${roomId}`);
+                        
+                        // Find entries with actual duration (not 0m)
+                        const entriesWithDuration = roomEntries.filter(entry => {
+                            if (!entry.endTime) return false; // Skip ongoing meetings
+                            const duration = entry.endTime - entry.startTime;
+                            return duration > 60000; // More than 1 minute
+                        });
+                        
+                        if (entriesWithDuration.length > 0) {
+                            // Keep the entry with the longest duration
+                            const bestEntry = entriesWithDuration.reduce((best, current) => {
+                                const bestDuration = best.endTime - best.startTime;
+                                const currentDuration = current.endTime - current.startTime;
+                                return currentDuration > bestDuration ? current : best;
+                            });
+                            cleanedHistory.push(bestEntry);
+                            const duration = Math.floor((bestEntry.endTime - bestEntry.startTime) / 60000);
+                            log(`Kept entry for room ${roomId} with ${duration}m duration`);
+                        } else {
+                            // No entries with significant duration, keep the most recent
+                            const mostRecent = roomEntries.reduce((latest, current) => {
+                                return current.startTime > latest.startTime ? current : latest;
+                            });
+                            cleanedHistory.push(mostRecent);
+                            log(`Kept most recent entry for room ${roomId}`);
+                        }
+                    }
+                });
+                
+                log(`Cleanup complete: ${history.length} -> ${cleanedHistory.length} entries`);
+                
+                // Save the cleaned history
+                chrome.storage.sync.set({ meetHistory: cleanedHistory }, () => {
+                    log('History saved successfully!');
+                    log('Refresh your meeting history to see the changes.');
+                });
+            });
+        }
+
+        // Initial log
+        log('Meeting History Cleanup Tool loaded');
+        log('Click "View Current History" to see duplicates, then "Cleanup Duplicates" to remove them.');
+    </script>
+</body>
+</html>

@@ -5,6 +5,8 @@ class GoogleMeetMattermostIntegration {
     constructor() {
         this.isInMeeting = false;
         this.meetingTitle = '';
+        this.currentRoomId = null;
+        this.meetingStatusSet = false;
         this.checkInterval = null;
         this.lastMeetingCheck = Date.now();
         this.meetingTimeoutId = null;
@@ -118,11 +120,19 @@ class GoogleMeetMattermostIntegration {
                 console.log('Current state:', { isInMeeting: this.isInMeeting, meetingTitle: this.meetingTitle });
                 
                 if (this.isInMeeting) {
-                    console.log('Calling setMeetingStatus...');
-                    await this.setMeetingStatus();
+                    const currentRoomId = this.extractMeetingRoomId();
+                    // Only set meeting status if we haven't already set it for this room
+                    if (!this.meetingStatusSet || this.currentRoomId !== currentRoomId) {
+                        console.log('Calling setMeetingStatus...');
+                        await this.setMeetingStatus();
+                        this.meetingStatusSet = true;
+                    } else {
+                        console.log('Meeting status already set for room:', currentRoomId, 'skipping duplicate call');
+                    }
                 } else {
                     console.log('Calling clearMeetingStatus...');
                     await this.clearMeetingStatus();
+                    this.meetingStatusSet = false;
                 }
             }
         } catch (error) {
@@ -271,6 +281,7 @@ class GoogleMeetMattermostIntegration {
             if (!settings.googleMeetIntegration) return;
 
             const roomId = this.extractMeetingRoomId();
+            this.currentRoomId = roomId; // Store the room ID for later use
             
             // Send message to background script to update Mattermost status
             chrome.runtime.sendMessage({
@@ -294,7 +305,8 @@ class GoogleMeetMattermostIntegration {
                 return;
             }
 
-            const roomId = this.extractMeetingRoomId();
+            // Use stored room ID instead of trying to extract from page
+            const roomId = this.currentRoomId;
             console.log('Content script: Clearing meeting status for room:', roomId);
             
             // Send message to background script to clear Mattermost status
@@ -304,6 +316,9 @@ class GoogleMeetMattermostIntegration {
             });
 
             console.log('Meeting status cleared for room:', roomId);
+            
+            // Clear the stored room ID
+            this.currentRoomId = null;
         } catch (error) {
             console.error('Failed to clear meeting status:', error);
         }
@@ -312,13 +327,21 @@ class GoogleMeetMattermostIntegration {
     // Synchronous version for use in beforeunload
     clearMeetingStatusSync() {
         try {
-            // Use sendMessage without await since beforeunload handlers should be quick
+            // Use stored room ID instead of trying to extract from page
+            const roomId = this.currentRoomId;
+            
+            // Send message to background script to clear Mattermost status
             chrome.runtime.sendMessage({
-                type: 'MATTERMOST_CLEAR_MEETING_STATUS'
+                type: 'MATTERMOST_CLEAR_MEETING_STATUS',
+                roomId: roomId
             });
-            console.log('Meeting status cleared (sync)');
+
+            console.log('Meeting status cleared synchronously for room:', roomId);
+            
+            // Clear the stored room ID
+            this.currentRoomId = null;
         } catch (error) {
-            console.error('Failed to clear meeting status (sync):', error);
+            console.error('Failed to clear meeting status synchronously:', error);
         }
     }
 

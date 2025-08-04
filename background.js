@@ -223,9 +223,16 @@ async function handleMattermostMeetingStatus(meetingTitle = '', roomId = null) {
         const emoji = settings.meetingEmoji || 'calendar';
         let text = settings.meetingText || 'In a meeting';
         
-        if (settings.showMeetingTitle && meetingTitle) {
+        // Check if meeting title is a room ID pattern (xxx-xxx-xxx)
+        const roomIdPattern = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/i;
+        const isRoomIdTitle = meetingTitle && roomIdPattern.test(meetingTitle.replace('Meet ', ''));
+        
+        // Only add meeting title to status if it's not a room ID pattern
+        if (settings.showMeetingTitle && meetingTitle && !isRoomIdTitle) {
             text += `: ${meetingTitle}`;
         }
+        
+        console.log('Status update:', { meetingTitle, isRoomIdTitle, finalText: text });
 
         await fetch(`${apiBaseUrl}/users/me/status/custom`, {
             method: 'PUT',
@@ -244,22 +251,24 @@ async function handleMattermostMeetingStatus(meetingTitle = '', roomId = null) {
             const result = await chrome.storage.sync.get(['meetHistory']);
             const history = result.meetHistory || [];
             
-            // Use roomId as unique identifier, fallback to timestamp if no roomId
-            const meetingId = roomId || Date.now().toString();
-            
             // Check if there's already an ongoing meeting with this roomId
-            const existingMeeting = history.find(entry => entry.roomId === meetingId && !entry.endTime);
-            if (existingMeeting) {
-                console.log('Meeting with room ID already in progress:', meetingId);
-                return;
+            if (roomId) {
+                const existingMeeting = history.find(entry => entry.roomId === roomId && !entry.endTime);
+                if (existingMeeting) {
+                    console.log('Background: Duplicate meeting detected - Meeting with room ID already in progress:', roomId);
+                    console.log('Background: Existing meeting:', existingMeeting);
+                    return;
+                }
             }
+            
+            console.log('Background: No existing meeting found for room:', roomId, 'Creating new entry...');
             
             const finalTitle = meetingTitle || (roomId ? `Meet ${roomId}` : 'Google Meet');
             console.log('Background: Creating history entry with title:', finalTitle);
             
             const entry = {
                 id: Date.now().toString(),
-                roomId: meetingId,
+                roomId: roomId || Date.now().toString(),
                 title: finalTitle,
                 startTime: Date.now(),
                 endTime: null
