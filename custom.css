@@ -111,6 +111,23 @@ textarea,
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     animation: modalSlideIn 0.3s ease-out;
 }
+.scroll-gut {
+    scrollbar-gutter: stable;
+}
+
+/* Hide scrollbars globally while maintaining functionality */
+* {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+/* Hide scrollbars for WebKit browsers */
+*::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+}
+
+
 
 /* Ensure modal inputs have proper styling */
 .rules-modal-content input[type="text"],

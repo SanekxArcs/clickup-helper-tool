@@ -1,33 +1,81 @@
 <!-- Tools Tab -->
 <div id="tools-tab" class="tab-content hidden">
-    <div class="p-4 space-y-4">
-        <h2 class="text-xl font-bold text-gray-800">Tools</h2>
+    <div class=" space-y-4">
 
-        <!-- REM/PX Converter -->
+        <!-- REM/PX/VW/VH Converter -->
         <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-            <h3 class="text-lg font-semibold text-gray-700 mb-3">REM &harr; PX Converter</h3>
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">REM ↔ PX ↔ VW/VH Converter</h3>
             
-            <div class="space-y-3">
-                <!-- Base Font Size -->
+            <div class="space-y-4">
+                <!-- Screen Size Presets -->
                 <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Screen Size Presets</label>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button type="button" class="screen-preset-btn px-3 py-1 text-xs bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition" data-width="420" data-height="812">Mobile (420x812)</button>
+                        <button type="button" class="screen-preset-btn px-3 py-1 text-xs bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition" data-width="768" data-height="1024">Tablet (768×1024)</button>
+                        <button type="button" class="screen-preset-btn px-3 py-1 text-xs bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition" data-width="1440" data-height="900">Desktop (1440×900)</button>
+                        <button type="button" class="screen-preset-btn px-3 py-1 text-xs bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition" data-width="1920" data-height="1080">Full HD (1920×1080)</button>
+                    </div>
+                </div>
+
+                <!-- Custom Screen Size -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label for="screenWidth" class="block text-sm font-medium text-gray-600 mb-1">Screen Width (px)</label>
+                        <input type="number" id="screenWidth" value="1440" class="w-full px-3 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <label for="screenHeight" class="block text-sm font-medium text-gray-600 mb-1">Screen Height (px)</label>
+                        <input type="number" id="screenHeight" value="900" class="w-full px-3 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    </div>
+                    <div>
                     <label for="baseFontSize" class="block text-sm font-medium text-gray-600 mb-1">Base Font Size (px)</label>
                     <input type="number" id="baseFontSize" value="16" class="w-full px-3 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                 </div>
+                </div>
+                
 
-                <!-- REM Input -->
+                <!-- Value Input -->
                 <div>
-                    <label for="remValue" class="block text-sm font-medium text-gray-600 mb-1">REM</label>
-                    <input type="number" id="remValue" placeholder="e.g., 1.5" class="w-full px-3 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    <label for="inputValue" class="block text-sm font-medium text-gray-600 mb-1">Enter Value</label>
+                    <div class="flex flex-col space-y-2">
+                        <!-- Unit Selection Buttons -->
+                        <div class="grid grid-cols-4 space-x-1">
+                            <button id="unitBtn-px" class="unit-btn px-3 py-1 text-sm font-medium rounded-md transition-colors bg-blue-500 text-white" data-unit="px">PX</button>
+                            <button id="unitBtn-rem" class="unit-btn px-3 py-1 text-sm font-medium rounded-md transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300" data-unit="rem">REM</button>
+                            <button id="unitBtn-vw" class="unit-btn px-3 py-1 text-sm font-medium rounded-md transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300" data-unit="vw">VW</button>
+                            <button id="unitBtn-vh" class="unit-btn px-3 py-1 text-sm font-medium rounded-md transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300" data-unit="vh">VH</button>
+                        </div>
+                        <!-- Value Input -->
+                        <input type="number" id="inputValue" placeholder="e.g., 100" class="w-full px-3 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    </div>
                 </div>
 
-                <!-- PX Input -->
-                <div>
-                    <label for="pxValue" class="block text-sm font-medium text-gray-600 mb-1">PX</label>
-                    <input type="number" id="pxValue" placeholder="e.g., 24" class="w-full px-3 py-2 text-gray-700 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                <!-- Conversion Results -->
+                <div id="conversionResults" class="space-y-2 hidden">
+                    <div class="bg-gray-50 p-3 rounded-md border border-gray-300">
+                        <div class="text-sm font-medium text-gray-700 mb-2">Conversion Results:</div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-white p-2 rounded border border-gray-300">
+                                <span class="font-medium text-blue-600">PX:</span>
+                                <span id="resultPx" class="ml-1">-</span>
+                            </div>
+                            <div class="bg-white p-2 rounded border border-gray-300">
+                                <span class="font-medium text-green-600">REM:</span>
+                                <span id="resultRem" class="ml-1">-</span>
+                            </div>
+                            <div class="bg-white p-2 rounded border border-gray-300">
+                                <span class="font-medium text-purple-600">VW:</span>
+                                <span id="resultVw" class="ml-1">-</span>
+                            </div>
+                            <div class="bg-white p-2 rounded border border-gray-300">
+                                <span class="font-medium text-orange-600">VH:</span>
+                                <span id="resultVh" class="ml-1">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="conversionFormula" class="text-xs text-gray-500 bg-gray-50 p-2 rounded border"></div>
                 </div>
-
-                <!-- Conversion Result -->
-                <div id="conversionResult" class="text-sm text-gray-600 bg-gray-50 p-2 rounded-md border hidden"></div>
             </div>
         </div>
         <!-- More tools can be added here in the future -->
