@@ -15,7 +15,7 @@ class GridFlexVisualizer {
         this.isActive = false;
         this.controlOverlay = null;
         this.visualizationEnabled = false;
-        this.currentCorner = 0; // 0: top-right, 1: top-left, 2: bottom-left, 3: bottom-right
+        this.currentCorner = 0; // 0-7: 8 positions around screen edges
         
         this.colorMap = {
             blue: '#3b82f6',
@@ -26,10 +26,14 @@ class GridFlexVisualizer {
         };
         
         this.cornerPositions = [
-            { top: '20px', right: '20px', left: 'auto', bottom: 'auto' }, // top-right
-            { top: '20px', left: '20px', right: 'auto', bottom: 'auto' }, // top-left
-            { bottom: '20px', left: '20px', top: 'auto', right: 'auto' }, // bottom-left
-            { bottom: '20px', right: '20px', top: 'auto', left: 'auto' }  // bottom-right
+            { top: '20px', left: '20px', right: 'auto', bottom: 'auto' },     // 0: top-left
+            { top: '20px', left: '50%', right: 'auto', bottom: 'auto', transform: 'translateX(-50%)' }, // 1: top-middle
+            { top: '20px', right: '20px', left: 'auto', bottom: 'auto' },    // 2: top-right
+            { top: '50%', right: '20px', left: 'auto', bottom: 'auto', transform: 'translateY(-50%)' }, // 3: right-middle
+            { bottom: '20px', right: '20px', top: 'auto', left: 'auto' },   // 4: bottom-right
+            { bottom: '20px', left: '50%', top: 'auto', right: 'auto', transform: 'translateX(-50%)' }, // 5: bottom-middle
+            { bottom: '20px', left: '20px', top: 'auto', right: 'auto' },   // 6: bottom-left
+            { top: '50%', left: '20px', right: 'auto', bottom: 'auto', transform: 'translateY(-50%)' }  // 7: left-middle
         ];
         
         this.init();
@@ -48,12 +52,14 @@ class GridFlexVisualizer {
                 gridFlexLocalhostOnly: false,
                 showGridContainers: true,
                 showFlexContainers: true,
+                gridFlexCornerPosition: 0,
                 showGridLines: true,
                 showGaps: true,
                 gridFlexColor: 'blue'
             });
             
             this.settings = result;
+            this.currentCorner = result.gridFlexCornerPosition || 0;
         } catch (error) {
             console.error('Error loading grid/flex settings:', error);
         }
@@ -215,9 +221,16 @@ class GridFlexVisualizer {
         title.textContent = 'Grid/Flex';
         
         // Add click handler to cycle through corners
-        title.addEventListener('click', () => {
-            this.currentCorner = (this.currentCorner + 1) % 4;
+        title.addEventListener('click', async () => {
+            this.currentCorner = (this.currentCorner + 1) % 8;
             this.updateOverlayPosition();
+            
+            // Save corner position to storage
+            try {
+                await chrome.storage.sync.set({ gridFlexCornerPosition: this.currentCorner });
+            } catch (error) {
+                console.error('Error saving grid/flex corner position:', error);
+            }
         });
         
         const toggleButton = document.createElement('button');
@@ -260,6 +273,7 @@ class GridFlexVisualizer {
         this.controlOverlay.style.right = position.right;
         this.controlOverlay.style.left = position.left;
         this.controlOverlay.style.bottom = position.bottom;
+        this.controlOverlay.style.transform = position.transform || 'none';
     }
     
     removeControlOverlay() {

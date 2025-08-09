@@ -158,19 +158,27 @@ class PerformanceMonitor {
         switch (this.position) {
             case 'top-left':
                 return { top: offset, left: offset };
+            case 'top-middle':
+                return { top: offset, left: '50%', transform: 'translateX(-50%)' };
             case 'top-right':
                 return { top: offset, right: offset };
-            case 'bottom-left':
-                return { bottom: offset, left: offset };
+            case 'right-middle':
+                return { top: '50%', right: offset, transform: 'translateY(-50%)' };
             case 'bottom-right':
                 return { bottom: offset, right: offset };
+            case 'bottom-middle':
+                return { bottom: offset, left: '50%', transform: 'translateX(-50%)' };
+            case 'bottom-left':
+                return { bottom: offset, left: offset };
+            case 'left-middle':
+                return { top: '50%', left: offset, transform: 'translateY(-50%)' };
             default:
                 return { top: offset, left: offset };
         }
     }
     
     cyclePosition() {
-        const positions = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
+        const positions = ['top-left', 'top-middle', 'top-right', 'right-middle', 'bottom-right', 'bottom-middle', 'bottom-left', 'left-middle'];
         const currentIndex = positions.indexOf(this.position);
         const nextIndex = (currentIndex + 1) % positions.length;
         this.position = positions[nextIndex];
@@ -191,6 +199,7 @@ class PerformanceMonitor {
             this.overlay.style.right = '';
             this.overlay.style.bottom = '';
             this.overlay.style.left = '';
+            this.overlay.style.transform = '';
             
             // Apply new position
             Object.assign(this.overlay.style, positionStyles);

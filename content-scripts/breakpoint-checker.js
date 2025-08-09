@@ -157,22 +157,29 @@ class BreakpointChecker {
         const offset = '20px';
         
         switch (position) {
-            case 'bottom-left':
-                return { bottom: offset, left: offset };
-            case 'bottom-center':
-                return { bottom: offset, left: '50%', transform: 'translateX(-50%)' };
-            case 'top-right':
-                return { top: offset, right: offset };
             case 'top-left':
                 return { top: offset, left: offset };
+            case 'top-middle':
+                return { top: offset, left: '50%', transform: 'translateX(-50%)' };
+            case 'top-right':
+                return { top: offset, right: offset };
+            case 'right-middle':
+                return { top: '50%', right: offset, transform: 'translateY(-50%)' };
             case 'bottom-right':
+                return { bottom: offset, right: offset };
+            case 'bottom-middle':
+                return { bottom: offset, left: '50%', transform: 'translateX(-50%)' };
+            case 'bottom-left':
+                return { bottom: offset, left: offset };
+            case 'left-middle':
+                return { top: '50%', left: offset, transform: 'translateY(-50%)' };
             default:
                 return { bottom: offset, right: offset };
         }
     }
 
     cyclePosition() {
-        const positions = ['bottom-right', 'bottom-center', 'bottom-left', 'top-left', 'top-right'];
+        const positions = ['top-left', 'top-middle', 'top-right', 'right-middle', 'bottom-right', 'bottom-middle', 'bottom-left', 'left-middle'];
         const currentIndex = positions.indexOf(this.settings.overlayPosition || 'bottom-right');
         const nextIndex = (currentIndex + 1) % positions.length;
         const newPosition = positions[nextIndex];
