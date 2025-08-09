@@ -13,6 +13,9 @@ class GridFlexVisualizer {
         this.overlays = new Map();
         this.observer = null;
         this.isActive = false;
+        this.controlOverlay = null;
+        this.visualizationEnabled = false;
+        this.currentCorner = 0; // 0: top-right, 1: top-left, 2: bottom-left, 3: bottom-right
         
         this.colorMap = {
             blue: '#3b82f6',
@@ -21,6 +24,13 @@ class GridFlexVisualizer {
             purple: '#8b5cf6',
             orange: '#f97316'
         };
+        
+        this.cornerPositions = [
+            { top: '20px', right: '20px', left: 'auto', bottom: 'auto' }, // top-right
+            { top: '20px', left: '20px', right: 'auto', bottom: 'auto' }, // top-left
+            { bottom: '20px', left: '20px', top: 'auto', right: 'auto' }, // bottom-left
+            { bottom: '20px', right: '20px', top: 'auto', left: 'auto' }  // bottom-right
+        ];
         
         this.init();
     }
@@ -85,14 +95,15 @@ class GridFlexVisualizer {
     
     activate() {
         this.isActive = true;
-        this.createVisualization();
+        this.createControlOverlay();
         this.setupObserver();
     }
     
     deactivate() {
         this.isActive = false;
-        this.clearVisualization();
         this.disconnectObserver();
+        this.clearVisualization();
+        this.removeControlOverlay();
     }
     
     setupObserver() {
@@ -106,6 +117,16 @@ class GridFlexVisualizer {
             attributes: true,
             attributeFilter: ['style', 'class']
         });
+        
+        // Add scroll listener to update overlay positions
+        this.scrollHandler = () => {
+            if (this.visualizationEnabled) {
+                this.updateOverlayPositions();
+            }
+        };
+        
+        window.addEventListener('scroll', this.scrollHandler, { passive: true });
+        window.addEventListener('resize', this.scrollHandler, { passive: true });
     }
     
     disconnectObserver() {
@@ -113,6 +134,29 @@ class GridFlexVisualizer {
             this.observer.disconnect();
             this.observer = null;
         }
+        
+        if (this.scrollHandler) {
+            window.removeEventListener('scroll', this.scrollHandler);
+            window.removeEventListener('resize', this.scrollHandler);
+            this.scrollHandler = null;
+        }
+    }
+    
+    updateOverlayPositions() {
+        this.overlays.forEach((overlay, element) => {
+            const rect = element.getBoundingClientRect();
+            
+            if (rect.width === 0 || rect.height === 0) {
+                overlay.style.display = 'none';
+                return;
+            }
+            
+            overlay.style.display = 'block';
+            overlay.style.top = `${rect.top}px`;
+            overlay.style.left = `${rect.left}px`;
+            overlay.style.width = `${rect.width}px`;
+            overlay.style.height = `${rect.height}px`;
+        });
     }
     
     createVisualization() {
@@ -128,8 +172,101 @@ class GridFlexVisualizer {
         // Debounce updates
         clearTimeout(this.updateTimeout);
         this.updateTimeout = setTimeout(() => {
-            this.createVisualization();
+            if (this.visualizationEnabled) {
+                this.createVisualization();
+            }
         }, 100);
+    }
+    
+    createControlOverlay() {
+        if (this.controlOverlay) return;
+        
+        this.controlOverlay = document.createElement('div');
+        this.controlOverlay.className = 'grid-flex-control-overlay';
+        
+        const position = this.cornerPositions[this.currentCorner];
+        this.controlOverlay.style.cssText = `
+            position: fixed;
+            top: ${position.top};
+            right: ${position.right};
+            left: ${position.left};
+            bottom: ${position.bottom};
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            z-index: 1000000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            min-width: 120px;
+            user-select: none;
+        `;
+        
+        const title = document.createElement('div');
+        title.style.cssText = `
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #3b82f6;
+            cursor: pointer;
+            text-align: center;
+            font-size: 11px;
+        `;
+        title.textContent = 'Grid/Flex';
+        
+        // Add click handler to cycle through corners
+        title.addEventListener('click', () => {
+            this.currentCorner = (this.currentCorner + 1) % 4;
+            this.updateOverlayPosition();
+        });
+        
+        const toggleButton = document.createElement('button');
+        toggleButton.style.cssText = `
+            width: 100%;
+            padding: 4px 8px;
+            background: ${this.visualizationEnabled ? '#10b981' : '#6b7280'};
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+        `;
+        toggleButton.textContent = this.visualizationEnabled ? 'ON' : 'OFF';
+        
+        toggleButton.addEventListener('click', () => {
+            this.visualizationEnabled = !this.visualizationEnabled;
+            toggleButton.textContent = this.visualizationEnabled ? 'ON' : 'OFF';
+            toggleButton.style.background = this.visualizationEnabled ? '#10b981' : '#6b7280';
+            
+            if (this.visualizationEnabled) {
+                this.createVisualization();
+            } else {
+                this.clearVisualization();
+            }
+        });
+        
+        this.controlOverlay.appendChild(title);
+        this.controlOverlay.appendChild(toggleButton);
+        
+        document.body.appendChild(this.controlOverlay);
+    }
+    
+    updateOverlayPosition() {
+        if (!this.controlOverlay) return;
+        
+        const position = this.cornerPositions[this.currentCorner];
+        this.controlOverlay.style.top = position.top;
+        this.controlOverlay.style.right = position.right;
+        this.controlOverlay.style.left = position.left;
+        this.controlOverlay.style.bottom = position.bottom;
+    }
+    
+    removeControlOverlay() {
+        if (this.controlOverlay) {
+            this.controlOverlay.remove();
+            this.controlOverlay = null;
+        }
     }
     
     findGridFlexElements() {
@@ -165,8 +302,8 @@ class GridFlexVisualizer {
         
         overlay.style.cssText = `
             position: fixed;
-            top: ${rect.top + window.scrollY}px;
-            left: ${rect.left + window.scrollX}px;
+            top: ${rect.top}px;
+            left: ${rect.left}px;
             width: ${rect.width}px;
             height: ${rect.height}px;
             border: 2px solid ${color};
@@ -207,14 +344,6 @@ class GridFlexVisualizer {
         
         document.body.appendChild(overlay);
         this.overlays.set(element, overlay);
-        
-        // Auto-remove after 5 seconds to prevent clutter
-        setTimeout(() => {
-            if (overlay.parentNode) {
-                overlay.remove();
-                this.overlays.delete(element);
-            }
-        }, 5000);
     }
     
     addGridLines(overlay, element, color) {
