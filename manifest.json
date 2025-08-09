@@ -21,7 +21,14 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js", "breakpoint-checker.js"]
+      "js": [
+            "content-scripts/content.js",
+            "content-scripts/breakpoint-checker.js",
+            "content-scripts/performance-monitor.js",
+            "content-scripts/grid-flex-visualizer.js",
+            "content-scripts/box-model-visualizer.js",
+            "content-scripts/console-overlay.js"
+        ]
     },
     {
       "matches": ["https://meet.google.com/*-*-*"],
@@ -66,5 +73,11 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["console-injector.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

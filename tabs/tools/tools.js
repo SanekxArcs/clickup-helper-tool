@@ -46,7 +46,44 @@ export class ToolsTab {
             breakpointValue: document.getElementById('breakpointValue'),
             addBreakpoint: document.getElementById('addBreakpoint'),
             breakpointsList: document.getElementById('breakpointsList'),
-            resetBreakpoints: document.getElementById('resetBreakpoints')
+            resetBreakpoints: document.getElementById('resetBreakpoints'),
+            
+            // Performance monitor elements
+            performanceMonitorEnabled: document.getElementById('performanceMonitorEnabled'),
+            performanceLocalhostOnly: document.getElementById('performanceLocalhostOnly'),
+            performancePosition: document.getElementById('performancePosition'),
+            performanceUpdateInterval: document.getElementById('performanceUpdateInterval'),
+            showFPS: document.getElementById('showFPS'),
+            showMemory: document.getElementById('showMemory'),
+            showFrameTime: document.getElementById('showFrameTime'),
+            showDOMNodes: document.getElementById('showDOMNodes'),
+            
+            // CSS Grid/Flexbox Visualizer elements
+            gridFlexVisualizerEnabled: document.getElementById('gridFlexVisualizerEnabled'),
+            gridFlexLocalhostOnly: document.getElementById('gridFlexLocalhostOnly'),
+            showGridContainers: document.getElementById('showGridContainers'),
+            showFlexContainers: document.getElementById('showFlexContainers'),
+            showGridLines: document.getElementById('showGridLines'),
+            showGaps: document.getElementById('showGaps'),
+            gridFlexColor: document.getElementById('gridFlexColor'),
+            
+            // Box Model Visualizer elements
+            boxModelVisualizerEnabled: document.getElementById('boxModelVisualizerEnabled'),
+            boxModelLocalhostOnly: document.getElementById('boxModelLocalhostOnly'),
+            boxModelTrigger: document.getElementById('boxModelTrigger'),
+            showBoxModelOverlay: document.getElementById('showBoxModelOverlay'),
+            showBoxModelValues: document.getElementById('showBoxModelValues'),
+            showBoxModelTooltip: document.getElementById('showBoxModelTooltip'),
+            
+            // Console Log Overlay elements
+            consoleOverlayEnabled: document.getElementById('consoleOverlayEnabled'),
+            consoleLocalhostOnly: document.getElementById('consoleLocalhostOnly'),
+            consolePosition: document.getElementById('consolePosition'),
+            showConsoleLogs: document.getElementById('showConsoleLogs'),
+            showConsoleWarnings: document.getElementById('showConsoleWarnings'),
+            showConsoleErrors: document.getElementById('showConsoleErrors'),
+            showConsoleInfo: document.getElementById('showConsoleInfo'),
+            consoleMaxEntries: document.getElementById('consoleMaxEntries')
         };
         
         // Initialize selected unit
@@ -54,6 +91,18 @@ export class ToolsTab {
         
         // Initialize breakpoint checker
         this.initializeBreakpointChecker();
+        
+        // Initialize performance monitor
+        this.initializePerformanceMonitor();
+        
+        // Initialize CSS Grid/Flexbox Visualizer
+        this.initializeGridFlexVisualizer();
+        
+        // Initialize Box Model Visualizer
+        this.initializeBoxModelVisualizer();
+        
+        // Initialize Console Log Overlay
+        this.initializeConsoleOverlay();
     }
 
     setupEventListeners() {
@@ -112,6 +161,18 @@ export class ToolsTab {
         
         // Breakpoint checker event listeners
         this.setupBreakpointCheckerListeners();
+        
+        // Performance monitor event listeners
+        this.setupPerformanceMonitorListeners();
+        
+        // CSS Grid/Flexbox Visualizer event listeners
+        this.setupGridFlexVisualizerListeners();
+        
+        // Box Model Visualizer event listeners
+        this.setupBoxModelVisualizerListeners();
+        
+        // Console Log Overlay event listeners
+        this.setupConsoleOverlayListeners();
     }
 
     calculateConversions() {
@@ -402,5 +463,522 @@ export class ToolsTab {
             
             this.elements.breakpointsList.appendChild(item);
         });
+    }
+    
+    // Performance Monitor Methods
+    initializePerformanceMonitor() {
+        this.loadPerformanceSettings();
+    }
+    
+    async loadPerformanceSettings() {
+        try {
+            const result = await chrome.storage.sync.get({
+                performanceMonitorEnabled: false,
+                performanceLocalhostOnly: false,
+                performancePosition: 'top-left',
+                performanceUpdateInterval: 250,
+                showFPS: true,
+                showMemory: true,
+                showFrameTime: false,
+                showDOMNodes: false
+            });
+            
+            if (this.elements.performanceMonitorEnabled) {
+                this.elements.performanceMonitorEnabled.checked = result.performanceMonitorEnabled;
+            }
+            if (this.elements.performanceLocalhostOnly) {
+                this.elements.performanceLocalhostOnly.checked = result.performanceLocalhostOnly;
+            }
+            if (this.elements.performancePosition) {
+                this.elements.performancePosition.value = result.performancePosition;
+            }
+            if (this.elements.performanceUpdateInterval) {
+                this.elements.performanceUpdateInterval.value = result.performanceUpdateInterval.toString();
+            }
+            if (this.elements.showFPS) {
+                this.elements.showFPS.checked = result.showFPS;
+            }
+            if (this.elements.showMemory) {
+                this.elements.showMemory.checked = result.showMemory;
+            }
+            if (this.elements.showFrameTime) {
+                this.elements.showFrameTime.checked = result.showFrameTime;
+            }
+            if (this.elements.showDOMNodes) {
+                this.elements.showDOMNodes.checked = result.showDOMNodes;
+            }
+        } catch (error) {
+            console.error('Error loading performance settings:', error);
+        }
+    }
+    
+    async savePerformanceSettings() {
+        try {
+            const settings = {
+                performanceMonitorEnabled: this.elements.performanceMonitorEnabled?.checked || false,
+                performanceLocalhostOnly: this.elements.performanceLocalhostOnly?.checked || false,
+                performancePosition: this.elements.performancePosition?.value || 'top-left',
+                performanceUpdateInterval: parseInt(this.elements.performanceUpdateInterval?.value) || 250,
+                showFPS: this.elements.showFPS?.checked || false,
+                showMemory: this.elements.showMemory?.checked || false,
+                showFrameTime: this.elements.showFrameTime?.checked || false,
+                showDOMNodes: this.elements.showDOMNodes?.checked || false
+            };
+            
+            await chrome.storage.sync.set(settings);
+            this.notifyPerformanceContentScripts();
+        } catch (error) {
+            console.error('Error saving performance settings:', error);
+        }
+    }
+    
+    async notifyPerformanceContentScripts() {
+        try {
+            const tabs = await chrome.tabs.query({});
+            const settings = {
+                performanceMonitorEnabled: this.elements.performanceMonitorEnabled?.checked || false,
+                performanceLocalhostOnly: this.elements.performanceLocalhostOnly?.checked || false,
+                performancePosition: this.elements.performancePosition?.value || 'top-left',
+                performanceUpdateInterval: parseInt(this.elements.performanceUpdateInterval?.value) || 250,
+                showFPS: this.elements.showFPS?.checked || false,
+                showMemory: this.elements.showMemory?.checked || false,
+                showFrameTime: this.elements.showFrameTime?.checked || false,
+                showDOMNodes: this.elements.showDOMNodes?.checked || false
+            };
+            
+            for (const tab of tabs) {
+                try {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'PERFORMANCE_SETTINGS_UPDATE',
+                        settings: settings
+                    });
+                } catch (error) {
+                    // Ignore errors for tabs that don't have content scripts
+                }
+            }
+        } catch (error) {
+            console.error('Error notifying performance content scripts:', error);
+        }
+    }
+    
+    setupPerformanceMonitorListeners() {
+        // Enable/disable toggle
+        if (this.elements.performanceMonitorEnabled) {
+            this.elements.performanceMonitorEnabled.addEventListener('change', () => {
+                this.savePerformanceSettings();
+            });
+        }
+        
+        // Localhost only toggle
+        if (this.elements.performanceLocalhostOnly) {
+            this.elements.performanceLocalhostOnly.addEventListener('change', () => {
+                this.savePerformanceSettings();
+            });
+        }
+        
+        // Position change
+        if (this.elements.performancePosition) {
+            this.elements.performancePosition.addEventListener('change', () => {
+                this.savePerformanceSettings();
+            });
+        }
+        
+        // Update interval change
+        if (this.elements.performanceUpdateInterval) {
+            this.elements.performanceUpdateInterval.addEventListener('change', () => {
+                this.savePerformanceSettings();
+            });
+        }
+        
+        // Metric toggles
+        [this.elements.showFPS, this.elements.showMemory, this.elements.showFrameTime, this.elements.showDOMNodes].forEach(element => {
+            if (element) {
+                element.addEventListener('change', () => {
+                    this.savePerformanceSettings();
+                });
+            }
+        });
+        
+        // Listen for storage changes to update UI
+        chrome.storage.onChanged.addListener((changes, namespace) => {
+            if (namespace === 'sync') {
+                if (changes.performancePosition && this.elements.performancePosition) {
+                    this.elements.performancePosition.value = changes.performancePosition.newValue;
+                }
+            }
+        });
+    }
+    
+    // CSS Grid/Flexbox Visualizer Methods
+    initializeGridFlexVisualizer() {
+        this.loadGridFlexSettings();
+    }
+    
+    async loadGridFlexSettings() {
+        try {
+            const result = await chrome.storage.sync.get({
+                gridFlexVisualizerEnabled: false,
+                gridFlexLocalhostOnly: false,
+                showGridContainers: true,
+                showFlexContainers: true,
+                showGridLines: true,
+                showGaps: true,
+                gridFlexColor: '#3b82f6'
+            });
+            
+            if (this.elements.gridFlexVisualizerEnabled) {
+                this.elements.gridFlexVisualizerEnabled.checked = result.gridFlexVisualizerEnabled;
+            }
+            if (this.elements.gridFlexLocalhostOnly) {
+                this.elements.gridFlexLocalhostOnly.checked = result.gridFlexLocalhostOnly;
+            }
+            if (this.elements.showGridContainers) {
+                this.elements.showGridContainers.checked = result.showGridContainers;
+            }
+            if (this.elements.showFlexContainers) {
+                this.elements.showFlexContainers.checked = result.showFlexContainers;
+            }
+            if (this.elements.showGridLines) {
+                this.elements.showGridLines.checked = result.showGridLines;
+            }
+            if (this.elements.showGaps) {
+                this.elements.showGaps.checked = result.showGaps;
+            }
+            if (this.elements.gridFlexColor) {
+                this.elements.gridFlexColor.value = result.gridFlexColor;
+            }
+        } catch (error) {
+            console.error('Error loading grid/flex settings:', error);
+        }
+    }
+    
+    async saveGridFlexSettings() {
+        try {
+            const settings = {
+                gridFlexVisualizerEnabled: this.elements.gridFlexVisualizerEnabled?.checked || false,
+                gridFlexLocalhostOnly: this.elements.gridFlexLocalhostOnly?.checked || false,
+                showGridContainers: this.elements.showGridContainers?.checked || true,
+                showFlexContainers: this.elements.showFlexContainers?.checked || true,
+                showGridLines: this.elements.showGridLines?.checked || true,
+                showGaps: this.elements.showGaps?.checked || true,
+                gridFlexColor: this.elements.gridFlexColor?.value || '#3b82f6'
+            };
+            
+            await chrome.storage.sync.set(settings);
+            this.notifyGridFlexContentScripts();
+        } catch (error) {
+            console.error('Error saving grid/flex settings:', error);
+        }
+    }
+    
+    async notifyGridFlexContentScripts() {
+        try {
+            const tabs = await chrome.tabs.query({});
+            const settings = {
+                gridFlexVisualizerEnabled: this.elements.gridFlexVisualizerEnabled?.checked || false,
+                gridFlexLocalhostOnly: this.elements.gridFlexLocalhostOnly?.checked || false,
+                showGridContainers: this.elements.showGridContainers?.checked || true,
+                showFlexContainers: this.elements.showFlexContainers?.checked || true,
+                showGridLines: this.elements.showGridLines?.checked || true,
+                showGaps: this.elements.showGaps?.checked || true,
+                gridFlexColor: this.elements.gridFlexColor?.value || '#3b82f6'
+            };
+            
+            for (const tab of tabs) {
+                try {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'GRID_FLEX_SETTINGS_UPDATE',
+                        settings: settings
+                    });
+                } catch (error) {
+                    // Ignore errors for tabs that don't have content scripts
+                }
+            }
+        } catch (error) {
+            console.error('Error notifying grid/flex content scripts:', error);
+        }
+    }
+    
+    setupGridFlexVisualizerListeners() {
+        // Enable/disable toggle
+        if (this.elements.gridFlexVisualizerEnabled) {
+            this.elements.gridFlexVisualizerEnabled.addEventListener('change', () => {
+                this.saveGridFlexSettings();
+            });
+        }
+        
+        // Localhost only toggle
+        if (this.elements.gridFlexLocalhostOnly) {
+            this.elements.gridFlexLocalhostOnly.addEventListener('change', () => {
+                this.saveGridFlexSettings();
+            });
+        }
+        
+        // Feature toggles
+        [this.elements.showGridContainers, this.elements.showFlexContainers, this.elements.showGridLines, this.elements.showGaps].forEach(element => {
+            if (element) {
+                element.addEventListener('change', () => {
+                    this.saveGridFlexSettings();
+                });
+            }
+        });
+        
+        // Color picker
+        if (this.elements.gridFlexColor) {
+            this.elements.gridFlexColor.addEventListener('change', () => {
+                this.saveGridFlexSettings();
+            });
+        }
+    }
+    
+    // Box Model Visualizer Methods
+    initializeBoxModelVisualizer() {
+        this.loadBoxModelSettings();
+    }
+    
+    async loadBoxModelSettings() {
+        try {
+            const result = await chrome.storage.sync.get({
+                boxModelVisualizerEnabled: false,
+                boxModelLocalhostOnly: false,
+                boxModelTrigger: 'hover',
+                showBoxModelOverlay: true,
+                showBoxModelValues: true,
+                showBoxModelTooltip: true
+            });
+            
+            if (this.elements.boxModelVisualizerEnabled) {
+                this.elements.boxModelVisualizerEnabled.checked = result.boxModelVisualizerEnabled;
+            }
+            if (this.elements.boxModelLocalhostOnly) {
+                this.elements.boxModelLocalhostOnly.checked = result.boxModelLocalhostOnly;
+            }
+            if (this.elements.boxModelTrigger) {
+                this.elements.boxModelTrigger.value = result.boxModelTrigger;
+            }
+            if (this.elements.showBoxModelOverlay) {
+                this.elements.showBoxModelOverlay.checked = result.showBoxModelOverlay;
+            }
+            if (this.elements.showBoxModelValues) {
+                this.elements.showBoxModelValues.checked = result.showBoxModelValues;
+            }
+            if (this.elements.showBoxModelTooltip) {
+                this.elements.showBoxModelTooltip.checked = result.showBoxModelTooltip;
+            }
+        } catch (error) {
+            console.error('Error loading box model settings:', error);
+        }
+    }
+    
+    async saveBoxModelSettings() {
+        try {
+            const settings = {
+                boxModelVisualizerEnabled: this.elements.boxModelVisualizerEnabled?.checked || false,
+                boxModelLocalhostOnly: this.elements.boxModelLocalhostOnly?.checked || false,
+                boxModelTrigger: this.elements.boxModelTrigger?.value || 'hover',
+                showBoxModelOverlay: this.elements.showBoxModelOverlay?.checked || true,
+                showBoxModelValues: this.elements.showBoxModelValues?.checked || true,
+                showBoxModelTooltip: this.elements.showBoxModelTooltip?.checked || true
+            };
+            
+            await chrome.storage.sync.set(settings);
+            this.notifyBoxModelContentScripts();
+        } catch (error) {
+            console.error('Error saving box model settings:', error);
+        }
+    }
+    
+    async notifyBoxModelContentScripts() {
+        try {
+            const tabs = await chrome.tabs.query({});
+            const settings = {
+                boxModelVisualizerEnabled: this.elements.boxModelVisualizerEnabled?.checked || false,
+                boxModelLocalhostOnly: this.elements.boxModelLocalhostOnly?.checked || false,
+                boxModelTrigger: this.elements.boxModelTrigger?.value || 'hover',
+                showBoxModelOverlay: this.elements.showBoxModelOverlay?.checked || true,
+                showBoxModelValues: this.elements.showBoxModelValues?.checked || true,
+                showBoxModelTooltip: this.elements.showBoxModelTooltip?.checked || true
+            };
+            
+            for (const tab of tabs) {
+                try {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'BOX_MODEL_SETTINGS_UPDATE',
+                        settings: settings
+                    });
+                } catch (error) {
+                    // Ignore errors for tabs that don't have content scripts
+                }
+            }
+        } catch (error) {
+            console.error('Error notifying box model content scripts:', error);
+        }
+    }
+    
+    setupBoxModelVisualizerListeners() {
+        // Enable/disable toggle
+        if (this.elements.boxModelVisualizerEnabled) {
+            this.elements.boxModelVisualizerEnabled.addEventListener('change', () => {
+                this.saveBoxModelSettings();
+            });
+        }
+        
+        // Localhost only toggle
+        if (this.elements.boxModelLocalhostOnly) {
+            this.elements.boxModelLocalhostOnly.addEventListener('change', () => {
+                this.saveBoxModelSettings();
+            });
+        }
+        
+        // Trigger method change
+        if (this.elements.boxModelTrigger) {
+            this.elements.boxModelTrigger.addEventListener('change', () => {
+                this.saveBoxModelSettings();
+            });
+        }
+        
+        // Feature toggles
+        [this.elements.showBoxModelOverlay, this.elements.showBoxModelValues, this.elements.showBoxModelTooltip].forEach(element => {
+            if (element) {
+                element.addEventListener('change', () => {
+                    this.saveBoxModelSettings();
+                });
+            }
+        });
+    }
+    
+    // Console Log Overlay Methods
+    initializeConsoleOverlay() {
+        this.loadConsoleSettings();
+    }
+    
+    async loadConsoleSettings() {
+        try {
+            const result = await chrome.storage.sync.get({
+                consoleOverlayEnabled: false,
+                consoleLocalhostOnly: false,
+                consolePosition: 'bottom-left',
+                showConsoleLogs: true,
+                showConsoleWarnings: true,
+                showConsoleErrors: true,
+                showConsoleInfo: false,
+                consoleMaxEntries: 50
+            });
+            
+            if (this.elements.consoleOverlayEnabled) {
+                this.elements.consoleOverlayEnabled.checked = result.consoleOverlayEnabled;
+            }
+            if (this.elements.consoleLocalhostOnly) {
+                this.elements.consoleLocalhostOnly.checked = result.consoleLocalhostOnly;
+            }
+            if (this.elements.consolePosition) {
+                this.elements.consolePosition.value = result.consolePosition;
+            }
+            if (this.elements.showConsoleLogs) {
+                this.elements.showConsoleLogs.checked = result.showConsoleLogs;
+            }
+            if (this.elements.showConsoleWarnings) {
+                this.elements.showConsoleWarnings.checked = result.showConsoleWarnings;
+            }
+            if (this.elements.showConsoleErrors) {
+                this.elements.showConsoleErrors.checked = result.showConsoleErrors;
+            }
+            if (this.elements.showConsoleInfo) {
+                this.elements.showConsoleInfo.checked = result.showConsoleInfo;
+            }
+            if (this.elements.consoleMaxEntries) {
+                this.elements.consoleMaxEntries.value = result.consoleMaxEntries.toString();
+            }
+        } catch (error) {
+            console.error('Error loading console settings:', error);
+        }
+    }
+    
+    async saveConsoleSettings() {
+        try {
+            const settings = {
+                consoleOverlayEnabled: this.elements.consoleOverlayEnabled?.checked || false,
+                consoleLocalhostOnly: this.elements.consoleLocalhostOnly?.checked || false,
+                consolePosition: this.elements.consolePosition?.value || 'bottom-left',
+                showConsoleLogs: this.elements.showConsoleLogs?.checked || true,
+                showConsoleWarnings: this.elements.showConsoleWarnings?.checked || true,
+                showConsoleErrors: this.elements.showConsoleErrors?.checked || true,
+                showConsoleInfo: this.elements.showConsoleInfo?.checked || false,
+                consoleMaxEntries: parseInt(this.elements.consoleMaxEntries?.value) || 50
+            };
+            
+            await chrome.storage.sync.set(settings);
+            this.notifyConsoleContentScripts();
+        } catch (error) {
+            console.error('Error saving console settings:', error);
+        }
+    }
+    
+    async notifyConsoleContentScripts() {
+        try {
+            const tabs = await chrome.tabs.query({});
+            const settings = {
+                consoleOverlayEnabled: this.elements.consoleOverlayEnabled?.checked || false,
+                consoleLocalhostOnly: this.elements.consoleLocalhostOnly?.checked || false,
+                consolePosition: this.elements.consolePosition?.value || 'bottom-left',
+                showConsoleLogs: this.elements.showConsoleLogs?.checked || true,
+                showConsoleWarnings: this.elements.showConsoleWarnings?.checked || true,
+                showConsoleErrors: this.elements.showConsoleErrors?.checked || true,
+                showConsoleInfo: this.elements.showConsoleInfo?.checked || false,
+                consoleMaxEntries: parseInt(this.elements.consoleMaxEntries?.value) || 50
+            };
+            
+            for (const tab of tabs) {
+                try {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'CONSOLE_SETTINGS_UPDATE',
+                        settings: settings
+                    });
+                } catch (error) {
+                    // Ignore errors for tabs that don't have content scripts
+                }
+            }
+        } catch (error) {
+            console.error('Error notifying console content scripts:', error);
+        }
+    }
+    
+    setupConsoleOverlayListeners() {
+        // Enable/disable toggle
+        if (this.elements.consoleOverlayEnabled) {
+            this.elements.consoleOverlayEnabled.addEventListener('change', () => {
+                this.saveConsoleSettings();
+            });
+        }
+        
+        // Localhost only toggle
+        if (this.elements.consoleLocalhostOnly) {
+            this.elements.consoleLocalhostOnly.addEventListener('change', () => {
+                this.saveConsoleSettings();
+            });
+        }
+        
+        // Position change
+        if (this.elements.consolePosition) {
+            this.elements.consolePosition.addEventListener('change', () => {
+                this.saveConsoleSettings();
+            });
+        }
+        
+        // Log type toggles
+        [this.elements.showConsoleLogs, this.elements.showConsoleWarnings, this.elements.showConsoleErrors, this.elements.showConsoleInfo].forEach(element => {
+            if (element) {
+                element.addEventListener('change', () => {
+                    this.saveConsoleSettings();
+                });
+            }
+        });
+        
+        // Max entries change
+        if (this.elements.consoleMaxEntries) {
+            this.elements.consoleMaxEntries.addEventListener('change', () => {
+                this.saveConsoleSettings();
+            });
+        }
     }
 }

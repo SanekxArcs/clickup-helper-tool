@@ -47,6 +47,42 @@ chrome.runtime.onInstalled.addListener(() => {
             contexts: ['page']
         });
     });
+    
+    // Create context menu for debugging tools
+    chrome.contextMenus.create({
+        id: 'debuggingTools',
+        title: 'Debugging Tools',
+        contexts: ['page']
+    });
+    
+    // Create submenu items for debugging tools
+    const debuggingTools = [
+        { id: 'toggleAll', title: 'Toggle All Tools' },
+        { id: 'separator1', type: 'separator' },
+        { id: 'breakpointChecker', title: 'Breakpoint Checker' },
+        { id: 'performanceMonitor', title: 'Performance Monitor' },
+        { id: 'gridFlexVisualizer', title: 'Grid/Flex Visualizer' },
+        { id: 'boxModelVisualizer', title: 'Box Model Visualizer' },
+        { id: 'consoleOverlay', title: 'Console Overlay' }
+    ];
+    
+    debuggingTools.forEach(tool => {
+        if (tool.type === 'separator') {
+            chrome.contextMenus.create({
+                id: `debug_${tool.id}`,
+                parentId: 'debuggingTools',
+                type: 'separator',
+                contexts: ['page']
+            });
+        } else {
+            chrome.contextMenus.create({
+                id: `debug_${tool.id}`,
+                parentId: 'debuggingTools',
+                title: tool.title,
+                contexts: ['page']
+            });
+        }
+    });
 });
 
 // Handle context menu clicks
@@ -60,6 +96,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     } else if (info.menuItemId.startsWith('env_')) {
         // Handle environment switching
         handleEnvironmentSwitch(info.menuItemId, tab);
+    } else if (info.menuItemId.startsWith('debug_')) {
+        // Handle debugging tools
+        handleDebuggingToolToggle(info.menuItemId, tab);
     }
 });
 
@@ -93,6 +132,157 @@ function handleEnvironmentSwitch(menuItemId, tab) {
     });
     
     console.log(`Redirecting from ${currentUrl} to ${newUrl}`);
+}
+
+// Function to handle debugging tool toggles
+async function handleDebuggingToolToggle(menuItemId, tab) {
+    const toolId = menuItemId.replace('debug_', '');
+    
+    if (toolId === 'toggleAll') {
+        // Toggle all debugging tools
+        await toggleAllDebuggingTools(tab);
+    } else {
+        // Toggle individual tool
+        await toggleIndividualTool(toolId, tab);
+    }
+}
+
+// Function to toggle all debugging tools
+async function toggleAllDebuggingTools(tab) {
+    try {
+        // Get current state of all tools
+        const result = await chrome.storage.sync.get([
+            'breakpointCheckerEnabled',
+            'performanceMonitorEnabled', 
+            'gridFlexVisualizerEnabled',
+            'boxModelVisualizerEnabled',
+            'consoleOverlayEnabled'
+        ]);
+        
+        // Determine if we should turn all on or all off
+        // If any tool is enabled, turn all off; otherwise turn all on
+        const anyEnabled = Object.values(result).some(value => value === true);
+        const newState = !anyEnabled;
+        
+        // Update all tool states
+        await chrome.storage.sync.set({
+            breakpointCheckerEnabled: newState,
+            performanceMonitorEnabled: newState,
+            gridFlexVisualizerEnabled: newState,
+            boxModelVisualizerEnabled: newState,
+            consoleOverlayEnabled: newState
+        });
+        
+        // Notify all content scripts
+        chrome.tabs.sendMessage(tab.id, {
+            type: 'BREAKPOINT_CHECKER_SETTINGS_UPDATED',
+            settings: { enabled: newState }
+        });
+        
+        chrome.tabs.sendMessage(tab.id, {
+            type: 'PERFORMANCE_MONITOR_SETTINGS_UPDATED',
+            settings: { enabled: newState }
+        });
+        
+        chrome.tabs.sendMessage(tab.id, {
+            type: 'GRID_FLEX_VISUALIZER_SETTINGS_UPDATED',
+            settings: { enabled: newState }
+        });
+        
+        chrome.tabs.sendMessage(tab.id, {
+            type: 'BOX_MODEL_VISUALIZER_SETTINGS_UPDATED',
+            settings: { enabled: newState }
+        });
+        
+        chrome.tabs.sendMessage(tab.id, {
+            type: 'CONSOLE_OVERLAY_SETTINGS_UPDATED',
+            settings: { enabled: newState }
+        });
+        
+        // Show notification
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon48.png',
+            title: 'Debugging Tools',
+            message: `All debugging tools ${newState ? 'enabled' : 'disabled'}. Reloading page...`
+        });
+        
+        // Reload the page to apply changes
+        setTimeout(() => {
+            chrome.tabs.reload(tab.id);
+        }, 500);
+        
+    } catch (error) {
+        console.error('Error toggling all debugging tools:', error);
+    }
+}
+
+// Function to toggle individual debugging tool
+async function toggleIndividualTool(toolId, tab) {
+    try {
+        const settingsMap = {
+            'breakpointChecker': {
+                key: 'breakpointCheckerEnabled',
+                messageType: 'BREAKPOINT_CHECKER_SETTINGS_UPDATED',
+                name: 'Breakpoint Checker'
+            },
+            'performanceMonitor': {
+                key: 'performanceMonitorEnabled',
+                messageType: 'PERFORMANCE_MONITOR_SETTINGS_UPDATED',
+                name: 'Performance Monitor'
+            },
+            'gridFlexVisualizer': {
+                key: 'gridFlexVisualizerEnabled',
+                messageType: 'GRID_FLEX_VISUALIZER_SETTINGS_UPDATED',
+                name: 'Grid/Flex Visualizer'
+            },
+            'boxModelVisualizer': {
+                key: 'boxModelVisualizerEnabled',
+                messageType: 'BOX_MODEL_VISUALIZER_SETTINGS_UPDATED',
+                name: 'Box Model Visualizer'
+            },
+            'consoleOverlay': {
+                key: 'consoleOverlayEnabled',
+                messageType: 'CONSOLE_OVERLAY_SETTINGS_UPDATED',
+                name: 'Console Overlay'
+            }
+        };
+        
+        const toolConfig = settingsMap[toolId];
+        if (!toolConfig) return;
+        
+        // Get current state
+        const result = await chrome.storage.sync.get([toolConfig.key]);
+        const currentState = result[toolConfig.key] || false;
+        const newState = !currentState;
+        
+        // Update state
+        await chrome.storage.sync.set({
+            [toolConfig.key]: newState
+        });
+        
+        // Notify content script
+        chrome.tabs.sendMessage(tab.id, {
+            type: toolConfig.messageType,
+            settings: { enabled: newState }
+        });
+        
+        // Show notification
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon48.png',
+            title: 'Debugging Tools',
+            message: `${toolConfig.name} ${newState ? 'enabled' : 'disabled'}. Reloading page...`
+        });
+        
+        // Reload the page to apply changes
+        setTimeout(() => {
+            chrome.tabs.reload(tab.id);
+        }, 500);
+        
+    } catch (error) {
+        console.error('Error toggling debugging tool:', error);
+    }
 }
 
 // Function to extract task data and store it

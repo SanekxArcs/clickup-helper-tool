@@ -141,6 +141,300 @@
             </div>
         </div>
         
+        <!-- FPS & Performance Monitor -->
+        <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">⚡ FPS & Performance Monitor</h3>
+            <p class="text-sm text-gray-600 mb-4">Real-time performance monitoring with FPS counter, memory usage, and frame time analysis in a floating overlay.</p>
+            
+            <div class="space-y-4">
+                <!-- Toggle Controls -->
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="performanceMonitorEnabled" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Enable Performance Monitor</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="performanceLocalhostOnly" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Localhost/IP only</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Position Setting -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Monitor Position</label>
+                        <select id="performancePosition" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Update Interval -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Update Interval</label>
+                        <select id="performanceUpdateInterval" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="100">100ms (High CPU)</option>
+                            <option value="250">250ms (Balanced)</option>
+                            <option value="500">500ms (Low CPU)</option>
+                            <option value="1000">1000ms (Minimal)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics Options -->
+                <div>
+                    <h4 class="text-md font-medium text-gray-700 mb-2">Display Metrics</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showFPS" class="mr-2 rounded" checked>
+                            <span class="text-sm text-gray-700">FPS (Frames Per Second)</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showMemory" class="mr-2 rounded" checked>
+                            <span class="text-sm text-gray-700">Memory Usage</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showFrameTime" class="mr-2 rounded">
+                            <span class="text-sm text-gray-700">Frame Time (ms)</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showDOMNodes" class="mr-2 rounded">
+                            <span class="text-sm text-gray-700">DOM Nodes Count</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="bg-gray-50 p-3 rounded-md border">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Preview:</div>
+                    <div class="inline-block bg-black bg-opacity-90 text-green-400 text-xs px-3 py-2 rounded shadow-lg border border-green-500">
+                        <div class="font-mono space-y-1">
+                            <div>FPS: 60</div>
+                            <div>Memory: 45.2 MB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CSS Grid/Flexbox Visualizer -->
+        <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">🎨 CSS Grid/Flexbox Visualizer</h3>
+            <p class="text-sm text-gray-600 mb-4">Visualize CSS Grid and Flexbox layouts with overlay indicators, gap spacing, and container boundaries.</p>
+            
+            <div class="space-y-4">
+                <!-- Toggle Controls -->
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="gridFlexVisualizerEnabled" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Enable Grid/Flex Visualizer</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="gridFlexLocalhostOnly" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Localhost/IP only</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Visualization Options -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Show Elements</h4>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showGridContainers" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">CSS Grid Containers</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showFlexContainers" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">Flexbox Containers</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showGridLines" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">Grid Lines & Numbers</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showGaps" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">Gap Spacing</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Color Settings -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Overlay Color</label>
+                        <select id="gridFlexColor" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="blue">Blue</option>
+                            <option value="red">Red</option>
+                            <option value="green">Green</option>
+                            <option value="purple">Purple</option>
+                            <option value="orange">Orange</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="bg-gray-50 p-3 rounded-md border">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Preview:</div>
+                    <div class="relative bg-white border-2 border-dashed border-blue-400 p-2 rounded">
+                        <div class="text-xs text-blue-600 font-mono mb-1">display: grid</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="bg-blue-100 border border-blue-300 p-1 text-xs text-center">1</div>
+                            <div class="bg-blue-100 border border-blue-300 p-1 text-xs text-center">2</div>
+                            <div class="bg-blue-100 border border-blue-300 p-1 text-xs text-center">3</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Box Model Visualizer -->
+        <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">📦 Box Model Visualizer</h3>
+            <p class="text-sm text-gray-600 mb-4">Visualize element box models with color-coded margin, border, padding, and content areas on hover or click.</p>
+            
+            <div class="space-y-4">
+                <!-- Toggle Controls -->
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="boxModelVisualizerEnabled" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Enable Box Model Visualizer</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="boxModelLocalhostOnly" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Localhost/IP only</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Trigger Mode -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Activation Mode</label>
+                        <select id="boxModelTrigger" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="hover">On Hover</option>
+                            <option value="click">On Click</option>
+                            <option value="always">Always Show</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Display Options -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Show Information</h4>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showBoxModelOverlay" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">Color Overlay</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showBoxModelValues" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">Numeric Values</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showBoxModelTooltip" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">Detailed Tooltip</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="bg-gray-50 p-3 rounded-md border">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Preview:</div>
+                    <div class="relative">
+                        <div class="bg-orange-200 p-2 border-2 border-orange-400 rounded">
+                            <div class="bg-yellow-200 p-2 border-2 border-yellow-400">
+                                <div class="bg-green-200 p-2 border-2 border-green-400">
+                                    <div class="bg-blue-200 p-2 text-xs text-center">Content</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="absolute top-0 left-0 text-xs text-orange-600 font-mono">margin</div>
+                        <div class="absolute top-6 left-6 text-xs text-yellow-600 font-mono">border</div>
+                        <div class="absolute top-12 left-12 text-xs text-green-600 font-mono">padding</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Console Log Overlay -->
+        <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">🖥️ Console Log Overlay</h3>
+            <p class="text-sm text-gray-600 mb-4">!! feature in progress !! Display console logs, errors, and warnings directly on the page in a floating overlay window.</p>
+            
+            <div class="space-y-4">
+                <!-- Toggle Controls -->
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="consoleOverlayEnabled" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Enable Console Overlay</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="consoleLocalhostOnly" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Localhost/IP only</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Position Setting -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Overlay Position</label>
+                        <select id="consolePosition" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="top-left">Top Left</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Log Types -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Show Log Types</h4>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showConsoleLogs" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">console.log()</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showConsoleWarnings" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">console.warn()</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showConsoleErrors" class="mr-2 rounded" checked>
+                                <span class="text-sm text-gray-700">console.error()</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showConsoleInfo" class="mr-2 rounded">
+                                <span class="text-sm text-gray-700">console.info()</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Display Settings -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Max Log Entries</label>
+                        <select id="consoleMaxEntries" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="50">50 entries</option>
+                            <option value="100">100 entries</option>
+                            <option value="200">200 entries</option>
+                            <option value="500">500 entries</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="bg-gray-50 p-3 rounded-md border">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Preview:</div>
+                    <div class="bg-black bg-opacity-95 text-white text-xs p-3 rounded shadow-lg border max-h-32 overflow-y-auto font-mono">
+                        <div class="text-blue-300">[INFO] Page loaded successfully</div>
+                        <div class="text-white">[LOG] User clicked button</div>
+                        <div class="text-yellow-300">[WARN] Deprecated API usage</div>
+                        <div class="text-red-300">[ERROR] Failed to fetch data</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- More tools can be added here in the future -->
     </div>
 </div>
