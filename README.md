@@ -78,6 +78,15 @@ A comprehensive Chrome extension that streamlines development workflows with AI-
 - **Export/Import**: Complete data backup and migration
 - **Debug Tools**: Comprehensive error handling and debugging capabilities
 - **Cleanup Utilities**: Tools to manage and clean duplicate data
+- **🔥 Tailwind CSS Breakpoint Checker**: Real-time breakpoint detection and screen width display
+  - **Live Breakpoint Detection**: Instantly displays active Tailwind CSS breakpoint (sm, md, lg, xl, 2xl)
+  - **Real-Time Screen Width**: Shows current viewport width in pixels dynamically
+  - **Floating Overlay**: Non-intrusive display in bottom-right corner of websites
+  - **Custom Breakpoints**: Create, edit, and delete custom breakpoints with any name and pixel value
+  - **Localhost/IP Filtering**: Option to show overlay only on localhost or private IP addresses
+  - **Responsive Design Testing**: Perfect for debugging responsive layouts and Tailwind CSS classes
+  - **Auto-Updates**: Breakpoint display updates instantly when resizing browser window
+  - **Lightweight**: No performance impact, works across all websites
 
 ## 🚀 Quick Start
 
@@ -127,6 +136,24 @@ A comprehensive Chrome extension that streamlines development workflows with AI-
 2. Select "Go to Dev Environment" from context menu
 3. Choose your target environment (localhost, test server, etc.)
 4. Page opens in new tab with same path preserved
+
+#### **🔥 Tailwind CSS Breakpoint Checker**
+1. Open the extension and go to **Tools** tab
+2. Scroll down to the "Tailwind CSS Breakpoint Checker" section
+3. **Enable the feature**: Check "Enable Breakpoint Checker"
+4. **Optional**: Enable "Localhost/IP only" to show overlay only on local development sites
+5. **Customize breakpoints** (optional):
+   - Add custom breakpoints with any name and pixel value
+   - Edit or delete existing breakpoints
+   - Reset to Tailwind CSS defaults anytime
+6. **See it in action**: Visit any website and resize your browser window
+7. **Test with included demo**: Open `breakpoint-test.html` for a comprehensive test page
+
+**Features:**
+- Floating overlay shows current screen width and active breakpoint
+- Updates in real-time as you resize the browser
+- Works on all websites (unless localhost-only mode is enabled)
+- Perfect for responsive design development and debugging
 
 ## 🎯 Mattermost Features
 

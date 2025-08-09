@@ -78,6 +78,69 @@
                 </div>
             </div>
         </div>
+        <!-- Tailwind CSS Breakpoint Checker -->
+        <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">🔥 Tailwind CSS Breakpoint Checker</h3>
+            <p class="text-sm text-gray-600 mb-4">Displays current screen width and active Tailwind breakpoint in a floating overlay on websites.</p>
+            
+            <div class="space-y-4">
+                <!-- Toggle Controls -->
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="breakpointCheckerEnabled" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Enable Breakpoint Checker</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="localhostOnly" class="mr-2 rounded">
+                            <span class="text-sm font-medium text-gray-700">Localhost/IP only</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Corner Position Setting -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Overlay Position</label>
+                        <select id="overlayPosition" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-center">Bottom Center</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="top-left">Top Left</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Breakpoints -->
+                <div>
+                    <h4 class="text-md font-medium text-gray-700 mb-2">Custom Breakpoints</h4>
+                    <div class="space-y-2">
+                        <!-- Add New Breakpoint -->
+                        <div class="flex space-x-2">
+                            <input type="text" id="breakpointName" placeholder="Name (e.g., sm)" class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="number" id="breakpointValue" placeholder="Width (px)" class="w-24 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button id="addBreakpoint" class="px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition">Add</button>
+                        </div>
+                        
+                        <!-- Breakpoints List -->
+                        <div id="breakpointsList" class="space-y-1 max-h-32 overflow-y-auto">
+                            <!-- Breakpoints will be populated here -->
+                        </div>
+                        
+                        <!-- Reset to Default -->
+                        <button id="resetBreakpoints" class="px-3 py-1 text-xs bg-gray-500 text-white rounded-md hover:bg-gray-600 transition">Reset to Tailwind Defaults</button>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="bg-gray-50 p-3 rounded-md border">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Preview:</div>
+                    <div class="inline-block bg-black bg-opacity-80 text-white text-xs px-2 py-1 rounded shadow-lg">
+                        <div class="font-mono">1440px • lg</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- More tools can be added here in the future -->
     </div>
 </div>
