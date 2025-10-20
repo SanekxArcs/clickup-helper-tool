@@ -366,19 +366,44 @@ async function handleMattermostMeetingStatus(meetingTitle = '', roomId = null) {
     try {
         console.log('Background: Received meeting status request:', { meetingTitle, roomId });
         
-        const stored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
-        const settings = stored.mattermostSettings || {};
+        // Check if room is filtered (should not auto-update status)
+        const stored = await chrome.storage.sync.get(['filteredRooms']);
+        const filteredRooms = stored.filteredRooms || [];
+        
+        console.log('[FILTER DEBUG] Filtered rooms list:', filteredRooms);
+        console.log('[FILTER DEBUG] Current roomId:', roomId);
+        
+        if (roomId) {
+            const normalizedRoomId = roomId.toLowerCase();
+            console.log('[FILTER DEBUG] Normalized roomId:', normalizedRoomId);
+            console.log('[FILTER DEBUG] Checking against list:', filteredRooms.map(r => `"${r}"`).join(', '));
+            console.log('[FILTER DEBUG] Is in filter?', filteredRooms.includes(normalizedRoomId));
+            
+            // Extra check for edge cases
+            const found = filteredRooms.some(r => r.toLowerCase() === normalizedRoomId);
+            console.log('[FILTER DEBUG] Double-check with .some():', found);
+            
+            if (filteredRooms.includes(normalizedRoomId) || found) {
+                console.log(`🚫 Room "${roomId}" is in filter list - skipping status update`);
+                return;
+            }
+        } else {
+            console.log('[FILTER DEBUG] No roomId provided - cannot filter');
+        }
+        
+        const authStored = await chrome.storage.sync.get(['mattermostSettings', 'MMAuthToken', 'MMAccessToken', 'MMUserId', 'serverUrl']);
+        const settings = authStored.mattermostSettings || {};
         
         if (!settings.googleMeetIntegration) {
             console.log('Google Meet integration is disabled');
             return;
         }
 
-        const token = stored.MMAccessToken || stored.MMAuthToken;
-        const userId = stored.MMUserId;
+        const token = authStored.MMAccessToken || authStored.MMAuthToken;
+        const userId = authStored.MMUserId;
         
         // Check for server URL in multiple places (for compatibility)
-        const serverUrl = settings.serverUrl || stored.serverUrl || 'https://chat.twntydigital.de';
+        const serverUrl = settings.serverUrl || authStored.serverUrl || 'https://chat.twntydigital.de';
         
         console.log('Meeting status authentication check:', { 
             hasToken: !!token, 

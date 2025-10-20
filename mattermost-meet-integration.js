@@ -205,8 +205,31 @@ class GoogleMeetMattermostIntegration {
         try {
             // Extract room ID from Google Meet URL pattern: https://meet.google.com/xxx-xxxx-xxx
             const url = window.location.href;
-            const roomIdMatch = url.match(/\/([a-z]{3}-[a-z]{4}-[a-z]{3})(?:\?|$)/);
-            return roomIdMatch ? roomIdMatch[1] : null;
+            
+            // Primary pattern: standard room code (abc-defg-hij)
+            let roomIdMatch = url.match(/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})(?:\?|\/|$)/i);
+            if (roomIdMatch) {
+                console.log('🔍 Room ID pattern 1 (standard):', roomIdMatch[1]);
+                return roomIdMatch[1].toLowerCase();
+            }
+            
+            // Fallback pattern: any-dash-separated code
+            roomIdMatch = url.match(/meet\.google\.com\/([a-z0-9]+-[a-z0-9]+-[a-z0-9]+)(?:\?|\/|$)/i);
+            if (roomIdMatch) {
+                console.log('🔍 Room ID pattern 2 (flexible):', roomIdMatch[1]);
+                return roomIdMatch[1].toLowerCase();
+            }
+            
+            // Fallback pattern: grab everything after /meet.google.com/
+            roomIdMatch = url.match(/meet\.google\.com\/([a-z0-9\-]+)/i);
+            if (roomIdMatch) {
+                const candidate = roomIdMatch[1].split(/[?#]/)[0]; // Remove query params
+                console.log('🔍 Room ID pattern 3 (fallback):', candidate);
+                return candidate.toLowerCase();
+            }
+            
+            console.log('🔍 No room ID found in URL:', url);
+            return null;
         } catch (error) {
             console.error('Error extracting meeting room ID:', error);
             return null;
@@ -283,6 +306,9 @@ class GoogleMeetMattermostIntegration {
             const roomId = this.extractMeetingRoomId();
             this.currentRoomId = roomId; // Store the room ID for later use
             
+            console.log('🔍 [INTEGRATION DEBUG] Extracted roomId:', roomId);
+            console.log('🔍 [INTEGRATION DEBUG] Meeting title:', this.meetingTitle);
+            
             // Send message to background script to update Mattermost status
             chrome.runtime.sendMessage({
                 type: 'MATTERMOST_SET_MEETING_STATUS',
@@ -290,7 +316,7 @@ class GoogleMeetMattermostIntegration {
                 roomId: roomId
             });
 
-            console.log('Meeting status set:', this.meetingTitle, 'Room ID:', roomId);
+            console.log('✅ Meeting status set:', this.meetingTitle, 'Room ID:', roomId);
         } catch (error) {
             console.error('Failed to set meeting status:', error);
         }

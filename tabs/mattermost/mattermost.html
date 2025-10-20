@@ -227,6 +227,32 @@
                 </div>
             </div>
 
+            <!-- Meet Filter - Exclude Rooms from Status Update -->
+            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-2">
+                <h3 class="text-lg font-medium text-gray-800 mb-2">Meet Filter - Exclude Rooms</h3>
+                <p class="text-sm text-gray-600 mb-4">Add room codes to exclude from automatic status updates</p>
+
+                <div class="space-y-3">
+                    <div class="flex gap-2">
+                        <input type="text" id="meet-room-code-input"
+                            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter Google Meet room code (e.g., abc-defg-hij)">
+                        <button id="add-meet-filter-btn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                            Add
+                        </button>
+                    </div>
+
+                    <div id="meet-filter-list" class="space-y-2">
+                        <!-- Filtered room codes will be displayed here -->
+                    </div>
+
+                    <div id="meet-filter-empty" class="text-center py-3 text-gray-500">
+                        <p class="text-sm">No filtered rooms yet</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Save Settings -->
             <div class="flex space-x-3">
                 <button id="save-settings-btn"
