@@ -367,8 +367,9 @@ async function handleMattermostMeetingStatus(meetingTitle = '', roomId = null) {
         console.log('Background: Received meeting status request:', { meetingTitle, roomId });
         
         // Check if room is filtered (should not auto-update status)
-        const stored = await chrome.storage.sync.get(['filteredRooms']);
+        const stored = await chrome.storage.sync.get(['filteredRooms', 'customRoomsConfig']);
         const filteredRooms = stored.filteredRooms || [];
+        const customRoomsConfig = stored.customRoomsConfig || [];
         
         console.log('[FILTER DEBUG] Filtered rooms list:', filteredRooms);
         console.log('[FILTER DEBUG] Current roomId:', roomId);
@@ -419,8 +420,34 @@ async function handleMattermostMeetingStatus(meetingTitle = '', roomId = null) {
 
         const apiBaseUrl = `${serverUrl}/api/v4`;
         
+        // Check if this room has a custom configuration
+        let customRoomConfig = null;
+        if (roomId) {
+            customRoomConfig = customRoomsConfig.find(config => config.roomCode === roomId.toLowerCase());
+        }
+        
+        if (customRoomConfig) {
+            console.log('🎯 Custom room configuration found for room:', roomId, customRoomConfig);
+        } else if (roomId) {
+            console.log('ℹ️ No custom configuration for room:', roomId);
+        }
+        
+        // Determine status, emoji, and text (from custom config or default settings)
+        const status = customRoomConfig?.availability || settings.meetingStatus || 'dnd';
+        let emoji = customRoomConfig?.emoji || settings.meetingEmoji || 'calendar';
+        let text = customRoomConfig?.text || settings.meetingText || 'In a meeting';
+        
+        // Only add meeting title to status if it's not a room ID pattern and no custom config is set
+        const roomIdPattern = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/i;
+        const isRoomIdTitle = meetingTitle && roomIdPattern.test(meetingTitle.replace('Meet ', ''));
+        
+        if (!customRoomConfig && settings.showMeetingTitle && meetingTitle && !isRoomIdTitle) {
+            text += `: ${meetingTitle}`;
+        }
+        
+        console.log('Status update:', { meetingTitle, isRoomIdTitle, finalText: text, customConfig: !!customRoomConfig });
+        
         // Update status (online/away/dnd)
-        const status = settings.meetingStatus || 'dnd';
         await fetch(`${apiBaseUrl}/users/me/status`, {
             method: 'PUT',
             headers: {
@@ -435,20 +462,6 @@ async function handleMattermostMeetingStatus(meetingTitle = '', roomId = null) {
         });
 
         // Update custom status with emoji and text
-        const emoji = settings.meetingEmoji || 'calendar';
-        let text = settings.meetingText || 'In a meeting';
-        
-        // Check if meeting title is a room ID pattern (xxx-xxx-xxx)
-        const roomIdPattern = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/i;
-        const isRoomIdTitle = meetingTitle && roomIdPattern.test(meetingTitle.replace('Meet ', ''));
-        
-        // Only add meeting title to status if it's not a room ID pattern
-        if (settings.showMeetingTitle && meetingTitle && !isRoomIdTitle) {
-            text += `: ${meetingTitle}`;
-        }
-        
-        console.log('Status update:', { meetingTitle, isRoomIdTitle, finalText: text });
-
         await fetch(`${apiBaseUrl}/users/me/status/custom`, {
             method: 'PUT',
             headers: {

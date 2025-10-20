@@ -7,6 +7,7 @@ export class MattermostTab {
         this.currentUser = null;
         this.customStatusPresets = [];
         this.filteredRooms = [];
+        this.customRoomsConfig = [];
         this.initialize();
     }
 
@@ -21,6 +22,9 @@ export class MattermostTab {
             
             // Load filtered rooms
             this.loadFilteredRooms();
+            
+            // Load custom room configurations
+            this.loadCustomRoomsConfig();
         } catch (error) {
             console.error('Failed to initialize Mattermost tab:', error);
         }
@@ -66,6 +70,17 @@ export class MattermostTab {
         document.getElementById('meet-room-code-input')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addMeetFilter();
         });
+
+        // Meet custom room
+        document.getElementById('add-custom-room-btn')?.addEventListener('click', () => this.openCustomRoomModal());
+        document.getElementById('custom-room-code-input')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.openCustomRoomModal();
+        });
+        
+        // Custom room modal
+        document.getElementById('close-custom-room-modal')?.addEventListener('click', () => this.hideCustomRoomModal());
+        document.getElementById('cancel-custom-room-modal')?.addEventListener('click', () => this.hideCustomRoomModal());
+        document.getElementById('custom-room-form')?.addEventListener('submit', (e) => this.handleSaveCustomRoom(e));
 
         // Enter key handling for login forms
         document.getElementById('login-id')?.addEventListener('keypress', (e) => {
@@ -553,8 +568,190 @@ export class MattermostTab {
     }
 
     isRoomFiltered(roomCode) {
-        if (!roomCode) return false;
-        return this.filteredRooms.includes(roomCode.toLowerCase());
+        return this.filteredRooms.some(room => room === roomCode.toLowerCase());
+    }
+
+    // ========== Meet Custom Room Methods ==========
+
+    async loadCustomRoomsConfig() {
+        try {
+            const result = await chrome.storage.sync.get(['customRoomsConfig']);
+            this.customRoomsConfig = result.customRoomsConfig || [];
+            this.displayCustomRoomsConfig();
+        } catch (error) {
+            console.error('Failed to load custom rooms config:', error);
+            this.customRoomsConfig = [];
+        }
+    }
+
+    displayCustomRoomsConfig() {
+        const listElement = document.getElementById('custom-room-list');
+        const emptyElement = document.getElementById('custom-room-empty');
+        
+        if (!listElement || !emptyElement) return;
+        
+        if (this.customRoomsConfig.length === 0) {
+            listElement.innerHTML = '';
+            emptyElement.classList.remove('hidden');
+            return;
+        }
+        
+        emptyElement.classList.add('hidden');
+        listElement.innerHTML = this.customRoomsConfig.map(config => this.createCustomRoomHTML(config)).join('');
+        
+        // Add event listeners for edit and delete buttons
+        listElement.querySelectorAll('.edit-custom-room-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const roomCode = e.currentTarget.getAttribute('data-room-code');
+                this.editCustomRoom(roomCode);
+            });
+        });
+        
+        listElement.querySelectorAll('.remove-custom-room-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const roomCode = e.currentTarget.getAttribute('data-room-code');
+                this.removeCustomRoom(roomCode);
+            });
+        });
+    }
+
+    createCustomRoomHTML(config) {
+        const { roomCode, emoji, text, availability } = config;
+        return `
+            <div class="flex items-center justify-between p-3 border bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="flex items-center space-x-3">
+                    <div class="text-2xl">${Utils.escapeHtml(emoji)}</div>
+                    <div>
+                        <div class="font-medium text-gray-800">${Utils.escapeHtml(roomCode)}</div>
+                        <div class="text-xs text-gray-500">"${Utils.escapeHtml(text)}" • ${availability}</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="edit-custom-room-btn p-1 text-blue-500 hover:text-blue-700 transition-colors" data-room-code="${Utils.escapeHtml(roomCode)}" title="Edit configuration">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </button>
+                    <button class="remove-custom-room-btn p-1 text-gray-400 hover:text-red-600 transition-colors" data-room-code="${Utils.escapeHtml(roomCode)}" title="Remove configuration">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    openCustomRoomModal(roomCode = null) {
+        const input = document.getElementById('custom-room-code-input');
+        const modal = document.getElementById('custom-room-modal');
+        const form = document.getElementById('custom-room-form');
+        const modalRoomCode = document.getElementById('modal-room-code');
+        
+        if (!modal || !form || !modalRoomCode) return;
+        
+        if (roomCode) {
+            // Edit mode
+            const config = this.customRoomsConfig.find(c => c.roomCode === roomCode);
+            if (config) {
+                modalRoomCode.value = config.roomCode;
+                document.getElementById('custom-room-emoji').value = config.emoji;
+                document.getElementById('custom-room-text').value = config.text;
+                document.getElementById('custom-room-availability').value = config.availability;
+                form.setAttribute('data-edit-mode', 'true');
+            }
+        } else {
+            // Add mode
+            const code = input?.value.trim().toLowerCase() || '';
+            if (!code) {
+                this.showMessage('Please enter a room code', 'error');
+                return;
+            }
+            
+            if (this.customRoomsConfig.some(c => c.roomCode === code)) {
+                this.showMessage('This room is already configured', 'warning');
+                return;
+            }
+            
+            // Reset form for new room
+            modalRoomCode.value = code;
+            document.getElementById('custom-room-emoji').value = '📅';
+            document.getElementById('custom-room-text').value = 'In this meeting';
+            document.getElementById('custom-room-availability').value = 'dnd';
+            form.removeAttribute('data-edit-mode');
+        }
+        
+        modal.classList.remove('hidden');
+    }
+
+    hideCustomRoomModal() {
+        const modal = document.getElementById('custom-room-modal');
+        const form = document.getElementById('custom-room-form');
+        if (modal) modal.classList.add('hidden');
+        if (form) form.reset();
+        const input = document.getElementById('custom-room-code-input');
+        if (input) input.value = '';
+    }
+
+    async handleSaveCustomRoom(e) {
+        e.preventDefault();
+        
+        const roomCode = (document.getElementById('modal-room-code').value || '').trim().toLowerCase();
+        const emoji = (document.getElementById('custom-room-emoji').value || '').trim();
+        const text = (document.getElementById('custom-room-text').value || '').trim();
+        const availability = document.getElementById('custom-room-availability').value;
+        
+        if (!roomCode || !emoji || !text) {
+            this.showMessage('Please fill in all fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('custom-room-form');
+        const isEditMode = form?.getAttribute('data-edit-mode') === 'true';
+        
+        if (isEditMode) {
+            // Update existing
+            const existingIndex = this.customRoomsConfig.findIndex(c => c.roomCode === roomCode);
+            if (existingIndex !== -1) {
+                this.customRoomsConfig[existingIndex] = { roomCode, emoji, text, availability };
+            }
+        } else {
+            // Add new
+            this.customRoomsConfig.push({ roomCode, emoji, text, availability });
+        }
+        
+        await this.saveCustomRoomsConfig();
+        this.displayCustomRoomsConfig();
+        this.hideCustomRoomModal();
+        this.showMessage(`Room "${roomCode}" configuration ${isEditMode ? 'updated' : 'added'}`, 'success');
+    }
+
+    editCustomRoom(roomCode) {
+        this.openCustomRoomModal(roomCode);
+    }
+
+    async removeCustomRoom(roomCode) {
+        if (confirm(`Remove custom status configuration for "${roomCode}"?`)) {
+            this.customRoomsConfig = this.customRoomsConfig.filter(config => config.roomCode !== roomCode);
+            await this.saveCustomRoomsConfig();
+            this.displayCustomRoomsConfig();
+            this.showMessage(`Configuration for "${roomCode}" removed`, 'success');
+        }
+    }
+
+    async saveCustomRoomsConfig() {
+        try {
+            await chrome.storage.sync.set({ customRoomsConfig: this.customRoomsConfig });
+        } catch (error) {
+            console.error('Failed to save custom rooms config:', error);
+            this.showMessage('Failed to save configuration', 'error');
+        }
+    }
+
+    getCustomRoomConfig(roomCode) {
+        return this.customRoomsConfig.find(config => config.roomCode === roomCode.toLowerCase());
     }
 
     async saveSettings() {
