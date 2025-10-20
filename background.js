@@ -36,7 +36,8 @@ chrome.runtime.onInstalled.addListener(() => {
         { id: 'test2', title: 'test2.priwatt.de', url: 'https://test2.priwatt.de' },
         { id: 'test3', title: 'test3.priwatt.de', url: 'https://test3.priwatt.de' },
         { id: 'test4', title: 'test4.priwatt.de', url: 'https://test4.priwatt.de' },
-        { id: 'test5', title: 'test5.priwatt.de', url: 'https://test5.priwatt.de' }
+        { id: 'test5', title: 'test5.priwatt.de', url: 'https://test5.priwatt.de' },
+        { id: 'priwatt', title: 'priwatt.de', url: 'https://priwatt.de' }
     ];
     
     environments.forEach(env => {
@@ -110,7 +111,8 @@ function handleEnvironmentSwitch(menuItemId, tab) {
         'env_test2': 'https://test2.priwatt.de',
         'env_test3': 'https://test3.priwatt.de',
         'env_test4': 'https://test4.priwatt.de',
-        'env_test5': 'https://test5.priwatt.de'
+        'env_test5': 'https://test5.priwatt.de',
+        'env_priwatt': 'https://priwatt.de'
     };
     
     const targetBaseUrl = environments[menuItemId];

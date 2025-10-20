@@ -357,7 +357,7 @@ Follow conventional commit format when possible
     │   └── history.js
     ├── mattermost/      # Mattermost integration
     │   ├── mattermost.html
-    │   └── mattermost.js
+    │   └── mattermost-refactored.js
     ├── templates/       # Template system
     └── settings/        # Configuration
 ```

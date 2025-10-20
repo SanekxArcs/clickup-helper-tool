@@ -1,201 +1,107 @@
 <div id="mattermost-tab" class="tab-content hidden">
-    <div class="h-full flex flex-col">
-        <!-- Custom Status Presets -->
-        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-2">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-lg font-medium text-gray-800">Custom Status Presets</h3>
-                <button id="create-status-btn"
-                    class="bg-green-600 text-white px-2 py-1 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors text-sm">
-                    + Create New
-                </button>
+    <div class="h-full flex flex-col overflow-hidden">
+        <!-- Header: Connection Status + User Info -->
+        <div id="connection-status" class="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200 px-4 py-3 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div id="status-indicator" class="w-3 h-3 rounded-full bg-gray-400"></div>
+                <span id="status-text" class="text-sm font-medium text-gray-700">Checking connection...</span>
             </div>
-
-            <div id="custom-status-list" class="space-y-2 mb-2">
-                <!-- Custom status buttons will be populated here -->
-            </div>
-
-            <div id="custom-status-empty" class="text-center py-4 text-gray-500 hidden">
-                <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                <p class="text-sm">No custom status presets created yet</p>
-                <p class="text-xs text-gray-400 mt-1">Click "Create New" to add your first preset</p>
-            </div>
-
-            <div class="flex space-x-3 mt-4">
-                <button id="clear-status-btn"
-                    class="bg-gray-600 w-full text-white py-1 px-2 rounded-md hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
-                    Clear Status
-                </button>
-            </div>
+            <div id="header-user-info" class="text-xs text-gray-600"></div>
         </div>
 
-        <!-- Quick Status Updates -->
-        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-2">
-            <h3 class="text-lg font-medium text-gray-800 mb-2">Quick Status Updates</h3>
+        <!-- Main Content Area - Scrollable -->
+        <div class="flex-1 overflow-y-auto">
+            <div class="p-4 space-y-4">
+                <!-- Quick Status Updates - Primary Action -->
+                <section class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-semibold text-gray-900">Quick Status</h3>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Main</span>
+                    </div>
 
-            <div class="flex flex-col gap-2 mb-2">
-                <button
-                    class="flex flex-row gap-2 status-quick-btn py-1 px-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left justify-between"
-                    data-status="online">
-                    <div class="flex items-center">
-                        <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                        <span class="font-medium">Online</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            class="status-quick-btn flex flex-col items-start p-2 border border-gray-300 rounded-md hover:bg-green-50 hover:border-green-300 transition-colors"
+                            data-status="online">
+                            <div class="flex items-center gap-2 mb-1 w-full">
+                                <div class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                                <span class="text-xs font-semibold text-gray-800">Online</span>
+                            </div>
+                            <p class="text-xs text-gray-500">Available</p>
+                        </button>
+                        <button
+                            class="status-quick-btn flex flex-col items-start p-2 border border-gray-300 rounded-md hover:bg-yellow-50 hover:border-yellow-300 transition-colors"
+                            data-status="away">
+                            <div class="flex items-center gap-2 mb-1 w-full">
+                                <div class="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
+                                <span class="text-xs font-semibold text-gray-800">Away</span>
+                            </div>
+                            <p class="text-xs text-gray-500">Temporarily away</p>
+                        </button>
+                        <button
+                            class="status-quick-btn flex flex-col items-start p-2 border border-gray-300 rounded-md hover:bg-red-50 hover:border-red-300 transition-colors"
+                            data-status="dnd">
+                            <div class="flex items-center gap-2 mb-1 w-full">
+                                <div class="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+                                <span class="text-xs font-semibold text-gray-800">DND</span>
+                            </div>
+                            <p class="text-xs text-gray-500">Focus mode</p>
+                        </button>
+                        <button
+                            class="status-quick-btn flex flex-col items-start p-2 border border-gray-300 rounded-md hover:bg-gray-100 hover:border-gray-400 transition-colors"
+                            data-status="offline">
+                            <div class="flex items-center gap-2 mb-1 w-full">
+                                <div class="w-2.5 h-2.5 bg-gray-500 rounded-full"></div>
+                                <span class="text-xs font-semibold text-gray-800">Offline</span>
+                            </div>
+                            <p class="text-xs text-gray-500">Not available</p>
+                        </button>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">Available and active</p>
-                </button>
-                <button
-                    class="flex flex-row gap-2 status-quick-btn py-1 px-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left justify-between"
-                    data-status="away">
-                    <div class="flex items-center">
-                        <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                        <span class="font-medium">Away</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Temporarily away</p>
-                </button>
-                <button
-                    class="flex flex-row gap-2 status-quick-btn py-1 px-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left justify-between"
-                    data-status="dnd">
-                    <div class="flex items-center">
-                        <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                        <span class="font-medium">Do Not Disturb</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Focus mode</p>
-                </button>
-                <button
-                    class="flex flex-row gap-2 status-quick-btn py-1 px-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left justify-between"
-                    data-status="offline">
-                    <div class="flex items-center">
-                        <div class="w-3 h-3 bg-gray-500 rounded-full mr-2"></div>
-                        <span class="font-medium">Offline</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Not available</p>
-                </button>
-            </div>
-        </div>
+                </section>
 
-        <!-- Connection Status -->
-        <div id="connection-status" class=" py-1 px-4 rounded-t-lg shadow-sm bg-white/50">
-            <div class="flex items-center">
-                <div id="status-indicator" class="w-3 h-3 rounded-full mr-3 bg-gray-400"></div>
-                <span id="status-text" class="text-sm text-gray-600">Checking connection...</span>
-            </div>
-        </div>
+                <!-- Custom Status Presets -->
+                <section class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-semibold text-gray-900">Custom Presets</h3>
+                        <button id="create-status-btn"
+                            class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-xs font-medium">
+                            + New
+                        </button>
+                    </div>
 
-        <!-- Authentication Section -->
-        <div id="auth-section" class="mb-6 hidden">
-            <div class="bg-white p-6 rounded-b-lg shadow-sm">
-                <h3 class="text-lg font-medium text-gray-800 mb-4">Connect to Mattermost</h3>
+                    <div id="custom-status-list" class="space-y-2 mb-3">
+                        <!-- Custom status buttons will be populated here -->
+                    </div>
 
-                <!-- Login Form -->
-                <div id="login-form" class="space-y-4">
-                    <div>
-                        <label for="server-url" class="block text-sm font-medium text-gray-700 mb-1">Mattermost Server
-                            URL</label>
-                        <input type="url" id="server-url"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="https://your-mattermost-server.com" value="https://chat.twntydigital.de">
-                        <p class="text-xs text-gray-500 mt-1">Enter your Mattermost server URL (without /api/v4)</p>
+                    <div id="custom-status-empty" class="text-center py-4 text-gray-500 hidden">
+                        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        <p class="text-sm">No presets yet</p>
                     </div>
-                    <div>
-                        <label for="login-id" class="block text-sm font-medium text-gray-700 mb-1">Email or
-                            Username</label>
-                        <input type="text" id="login-id"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter your email or username">
-                    </div>
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input type="password" id="password"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter your password">
-                    </div>
-                    <button id="login-btn"
-                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-                        Sign In
+
+                    <button id="clear-status-btn"
+                        class="w-full bg-gray-100 text-gray-700 hover:bg-gray-200 py-2 px-3 rounded-md transition-colors text-sm font-medium">
+                        Clear Status
                     </button>
-                </div>
+                </section>
 
-                <!-- OR divider -->
-                <div class="relative my-6">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-white text-gray-500">OR</span>
-                    </div>
-                </div>
-
-                <!-- Personal Access Token -->
-                <div class="space-y-4">
-                    <div>
-                        <label for="token-server-url" class="block text-sm font-medium text-gray-700 mb-1">Mattermost
-                            Server URL</label>
-                        <input type="url" id="token-server-url"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="https://your-mattermost-server.com" value="https://chat.twntydigital.de">
-                        <p class="text-xs text-gray-500 mt-1">Enter your Mattermost server URL (without /api/v4)</p>
-                    </div>
-                    <div>
-                        <label for="personal-token" class="block text-sm font-medium text-gray-700 mb-1">Personal Access
-                            Token</label>
-                        <input type="text" id="personal-token"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter your personal access token">
-                        <p class="text-xs text-gray-500 mt-1">You can create a personal access token in your Mattermost
-                            account settings</p>
-                    </div>
-                    <button id="token-btn"
-                        class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors">
-                        Connect with Token
-                    </button>
-                </div>
-
-                <div id="auth-error"
-                    class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm hidden"></div>
-            </div>
-        </div>
-
-        <!-- Main Controls -->
-        <div id="main-controls" class="hidden">
-            <!-- User Info -->
-            <div class="bg-white p-4 rounded-b-lg shadow-sm mb-2">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                            <span id="user-initial" class="text-blue-600 font-medium">?</span>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800" id="user-name">User</p>
-                            <p class="text-sm text-gray-500">Connected via <span id="auth-method">token</span></p>
-                        </div>
-                    </div>
-                    <button id="logout-btn" class="text-red-600 hover:text-red-700 text-sm font-medium">Logout</button>
-                </div>
-            </div>
-
-            <!-- Google Meet Integration -->
-            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-2">
-                <h3 class="text-lg font-medium text-gray-800 mb-2">Google Meet Integration</h3>
-
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="font-medium text-gray-800">Auto-update status during meetings</p>
-                        </div>
+                <!-- Google Meet Integration Section -->
+                <section class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-semibold text-gray-900">Google Meet Integration</h3>
                         <div class="flex items-center">
                             <input type="checkbox" id="google-meet-integration" class="toggle-switch">
-                            <label for="google-meet-integration" class="ml-2 text-sm text-gray-700">Enable</label>
+                            <label for="google-meet-integration" class="ml-2 text-xs text-gray-600">Enable</label>
                         </div>
                     </div>
 
                     <div id="meet-settings" class="space-y-3 hidden">
                         <div>
-                            <label for="meeting-status" class="block text-sm font-medium text-gray-700 mb-1">Meeting
-                                Status</label>
+                            <label for="meeting-status" class="block text-xs font-medium text-gray-700 mb-1">Status during meetings</label>
                             <select id="meeting-status"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="dnd">Do Not Disturb</option>
                                 <option value="away">Away</option>
                                 <option value="online">Online</option>
@@ -203,42 +109,37 @@
                         </div>
 
                         <div>
-                            <label for="meeting-emoji" class="block text-sm font-medium text-gray-700 mb-1">Meeting
-                                Emoji</label>
+                            <label for="meeting-emoji" class="block text-xs font-medium text-gray-700 mb-1">Emoji</label>
                             <input type="text" id="meeting-emoji"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value="calendar">
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="📅" placeholder="calendar">
                         </div>
 
                         <div>
-                            <label for="meeting-text" class="block text-sm font-medium text-gray-700 mb-1">Meeting
-                                Status Text</label>
+                            <label for="meeting-text" class="block text-xs font-medium text-gray-700 mb-1">Status text</label>
                             <input type="text" id="meeting-text"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value="In a meeting">
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="In a meeting" placeholder="In a meeting">
                         </div>
 
-                        <div class="flex items-center">
-                            <input type="checkbox" id="show-meeting-title" class="mr-2 size-4 rounded">
-                            <label for="show-meeting-title" class="text-sm text-gray-700">Show meeting title in
-                                status</label>
-                        </div>
+                        <label class="flex items-center text-xs text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="show-meeting-title" class="mr-2 rounded">
+                            <span>Show meeting title in status</span>
+                        </label>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- Meet Filter - Exclude Rooms from Status Update -->
-            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-2">
-                <h3 class="text-lg font-medium text-gray-800 mb-2">Meet Filter - Exclude Rooms</h3>
-                <p class="text-sm text-gray-600 mb-4">Add room codes to exclude from automatic status updates</p>
+                <!-- Meet Filter Section -->
+                <section class="bg-white rounded-lg border border-amber-200 shadow-sm p-4">
+                    <h3 class="text-base font-semibold text-gray-900 mb-1">Meet Filter</h3>
+                    <p class="text-xs text-gray-500 mb-3">Skip status update for specific rooms</p>
 
-                <div class="space-y-3">
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 mb-3">
                         <input type="text" id="meet-room-code-input"
-                            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter Google Meet room code (e.g., abc-defg-hij)">
+                            class="flex-1 px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="abc-defg-hij">
                         <button id="add-meet-filter-btn"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                            class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">
                             Add
                         </button>
                     </div>
@@ -247,24 +148,22 @@
                         <!-- Filtered room codes will be displayed here -->
                     </div>
 
-                    <div id="meet-filter-empty" class="text-center py-3 text-gray-500">
-                        <p class="text-sm">No filtered rooms yet</p>
+                    <div id="meet-filter-empty" class="text-center py-3 text-gray-500 text-sm">
+                        No filtered rooms
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- Meet Custom Room - Set Custom Status per Room -->
-            <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-2">
-                <h3 class="text-lg font-medium text-gray-800 mb-2">Meet Custom Room - Per-Room Status</h3>
-                <p class="text-sm text-gray-600 mb-4">Configure custom status (emoji, text, availability) for specific rooms</p>
+                <!-- Meet Custom Room Section -->
+                <section class="bg-white rounded-lg border border-indigo-200 shadow-sm p-4">
+                    <h3 class="text-base font-semibold text-gray-900 mb-1">Meet Custom Room</h3>
+                    <p class="text-xs text-gray-500 mb-3">Custom status per room (emoji, text, availability)</p>
 
-                <div class="space-y-3">
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 mb-3">
                         <input type="text" id="custom-room-code-input"
-                            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter Google Meet room code (e.g., abc-defg-hij)">
+                            class="flex-1 px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="abc-defg-hij">
                         <button id="add-custom-room-btn"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                            class="bg-indigo-600 text-white px-3 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium transition-colors">
                             Configure
                         </button>
                     </div>
@@ -273,27 +172,109 @@
                         <!-- Custom room configurations will be displayed here -->
                     </div>
 
-                    <div id="custom-room-empty" class="text-center py-3 text-gray-500">
-                        <p class="text-sm">No custom rooms configured yet</p>
+                    <div id="custom-room-empty" class="text-center py-3 text-gray-500 text-sm">
+                        No custom rooms configured
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- Save Settings -->
-            <div class="flex space-x-3">
-                <button id="save-settings-btn"
-                    class="flex-1 bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors font-medium">
-                    Save All Settings
-                </button>
-                <button id="test-connection-btn"
-                    class="bg-gray-600 text-white py-3 px-4 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
-                    Test Connection
-                </button>
+                <!-- Footer: Save/Test Buttons -->
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex gap-2">
+                    <button id="save-settings-btn"
+                        class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors font-medium text-sm">
+                        💾 Save Settings
+                    </button>
+                    <button id="test-connection-btn"
+                        class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium text-sm">
+                        🔗 Test
+                    </button>
+                </div>
             </div>
         </div>
 
+        <!-- Authentication Section - Hidden by default -->
+        <div id="auth-section" class="flex-1 overflow-y-auto hidden">
+            <div class="p-4">
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 max-w-2xl mx-auto">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Connect to Mattermost</h2>
+
+                    <!-- Login Form -->
+                    <div class="mb-8">
+                        <h3 class="text-base font-semibold text-gray-800 mb-4">Sign in with Email/Password</h3>
+                        <div id="login-form" class="space-y-4">
+                            <div>
+                                <label for="server-url" class="block text-sm font-medium text-gray-700 mb-1">Server URL</label>
+                                <input type="url" id="server-url"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    placeholder="https://your-mattermost-server.com" value="https://chat.twntydigital.de">
+                                <p class="text-xs text-gray-500 mt-1">Without /api/v4</p>
+                            </div>
+                            <div>
+                                <label for="login-id" class="block text-sm font-medium text-gray-700 mb-1">Email or Username</label>
+                                <input type="text" id="login-id"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    placeholder="Enter your email or username">
+                            </div>
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input type="password" id="password"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    placeholder="Enter your password">
+                            </div>
+                            <button id="login-btn"
+                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium">
+                                Sign In
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="relative my-8">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center">
+                            <span class="px-2 bg-white text-sm text-gray-500 font-medium">OR</span>
+                        </div>
+                    </div>
+
+                    <!-- Personal Access Token -->
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-800 mb-4">Connect with Personal Token</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="token-server-url" class="block text-sm font-medium text-gray-700 mb-1">Server URL</label>
+                                <input type="url" id="token-server-url"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    placeholder="https://your-mattermost-server.com" value="https://chat.twntydigital.de">
+                                <p class="text-xs text-gray-500 mt-1">Without /api/v4</p>
+                            </div>
+                            <div>
+                                <label for="personal-token" class="block text-sm font-medium text-gray-700 mb-1">Personal Access Token</label>
+                                <input type="text" id="personal-token"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                                    placeholder="Enter your personal access token">
+                                <p class="text-xs text-gray-500 mt-1">Create one in your Mattermost Account Settings → Personal Access Tokens</p>
+                            </div>
+                            <button id="token-btn"
+                                class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors font-medium">
+                                Connect with Token
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="auth-error"
+                        class="mt-6 p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Profile - Shown when authenticated -->
+        <div id="main-controls" class="hidden">
+            <!-- Moved to header via JS -->
+        </div>
+
         <!-- Status Messages -->
-        <div id="status-messages" class="mt-4"></div>
+        <div id="status-messages" class="fixed bottom-4 right-4 z-40 space-y-2"></div>
     </div>
 
     <!-- Custom Status Creation Modal -->
