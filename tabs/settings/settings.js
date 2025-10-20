@@ -8,11 +8,6 @@ export class SettingsTab {
             requests_per_day: 1500
         };
         this.modelRateLimits = {
-            'gemini-2.5-pro': {
-                requests_per_minute: 5,
-                requests_per_day: 100,
-                tokens_per_minute: 250000
-            },
             'gemini-2.5-flash': {
                 requests_per_minute: 10,
                 requests_per_day: 250,
@@ -22,26 +17,6 @@ export class SettingsTab {
                 requests_per_minute: 15,
                 requests_per_day: 1000,
                 tokens_per_minute: 250000
-            },
-            'gemini-2.0-flash-exp': {
-                requests_per_minute: 15,
-                requests_per_day: 200,
-                tokens_per_minute: 1000000
-            },
-            'gemini-2.0-flash-lite': {
-                requests_per_minute: 30,
-                requests_per_day: 200,
-                tokens_per_minute: 1000000
-            },
-            'gemini-1.5-flash': {
-                requests_per_minute: 15,
-                requests_per_day: 1500,
-                tokens_per_minute: 1000000
-            },
-            'gemini-1.5-pro': {
-                requests_per_minute: 2,
-                requests_per_day: 50,
-                tokens_per_minute: 32000
             }
         };
         this.initialize();

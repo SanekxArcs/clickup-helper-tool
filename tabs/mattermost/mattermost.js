@@ -1,5 +1,6 @@
 import { Utils } from '../../shared/utils.js';
 import { mattermostAPI } from '../../shared/mattermost-api.js';
+import { ToastManager } from '../../shared/toast-manager.js';
 
 export class MattermostTab {
     constructor() {
@@ -885,21 +886,7 @@ export class MattermostTab {
     }
 
     showMessage(message, type = 'info') {
-        const container = document.getElementById('status-messages');
-        if (!container) return;
-
-        const messageEl = document.createElement('div');
-        messageEl.className = `p-3 rounded-md text-sm mb-2 ${this.getMessageClasses(type)}`;
-        messageEl.textContent = message;
-
-        container.appendChild(messageEl);
-
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (messageEl.parentNode) {
-                messageEl.parentNode.removeChild(messageEl);
-            }
-        }, 5000);
+        ToastManager.show(message, type);
     }
 
 
@@ -911,20 +898,7 @@ export class MattermostTab {
             errorElement.textContent = message;
             errorElement.classList.remove('hidden');
         } else {
-            this.showMessage(message, 'error');
-        }
-    }
-
-    getMessageClasses(type) {
-        switch (type) {
-            case 'success':
-                return 'bg-green-50 text-green-700 border border-green-200';
-            case 'error':
-                return 'bg-red-50 text-red-700 border border-red-200';
-            case 'warning':
-                return 'bg-yellow-50 text-yellow-700 border border-yellow-200';
-            default:
-                return 'bg-blue-50 text-blue-700 border border-blue-200';
+            ToastManager.error(message);
         }
     }
 

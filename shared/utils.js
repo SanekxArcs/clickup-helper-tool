@@ -1,4 +1,6 @@
 // Shared utilities for the extension
+import { ToastManager } from './toast-manager.js';
+
 export class Utils {
     static escapeHtml(unsafe) {
         if (!unsafe) return '';
@@ -63,36 +65,81 @@ export class Utils {
         };
     }
 
-    static showNotification(message, type = 'success') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg text-white transition-all duration-300 transform translate-x-full`;
-        
-        if (type === 'error') {
-            notification.classList.add('bg-red-500');
-        } else if (type === 'warning') {
-            notification.classList.add('bg-yellow-500');
-        } else {
-            notification.classList.add('bg-green-500');
+    static showNotification(message, type = 'success', duration = 3000) {
+        switch (type) {
+            case 'error':
+                ToastManager.error(message, duration);
+                break;
+            case 'warning':
+                ToastManager.warning(message, duration);
+                break;
+            case 'info':
+                ToastManager.info(message, duration);
+                break;
+            default:
+                ToastManager.success(message, duration);
         }
-        
-        notification.textContent = message;
-        
-        // Add to DOM and animate in
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            notification.classList.remove('translate-x-full');
-        }, 10);
-        
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            notification.classList.add('translate-x-full');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
+    }
+
+    static async ensureContentScripts(tabId, files = ['content-scripts/content.js']) {
+        if (!tabId || !chrome?.scripting) {
+            return;
+        }
+
+        if (!this._injectedContentScripts) {
+            this._injectedContentScripts = new Map();
+        }
+
+        const key = `${tabId}::${files.join('|')}`;
+        if (this._injectedContentScripts.has(key)) {
+            return;
+        }
+
+        try {
+            await chrome.scripting.executeScript({
+                target: { tabId },
+                files,
+            });
+            this._injectedContentScripts.set(key, Date.now());
+
+            // Give the injected script a moment to register listeners
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        } catch (error) {
+            const message = error?.message || '';
+            if (message.includes('Cannot access contents of the page') || message.includes('Operation is not supported')) {
+                return;
+            }
+            console.warn('Failed to inject content scripts:', error);
+        }
+    }
+
+    static async safeSendMessage(tabId, message, options = {}) {
+        if (!tabId) {
+            throw new Error('safeSendMessage requires a valid tabId');
+        }
+
+        const files = options.files || ['content-scripts/content.js'];
+
+        const attemptSend = async () => chrome.tabs.sendMessage(tabId, message);
+
+        try {
+            return await attemptSend();
+        } catch (error) {
+            const messageText = error?.message || '';
+            if (messageText.includes('Receiving end does not exist')) {
+                await this.ensureContentScripts(tabId, files);
+                try {
+                    return await attemptSend();
+                } catch (retryError) {
+                    if (retryError?.message?.includes('Receiving end does not exist')) {
+                        console.debug('Content script unavailable after injection attempt', { tabId, requestType: message?.type });
+                        return null;
+                    }
+                    throw retryError;
                 }
-            }, 300);
-        }, 3000);
+            }
+            throw error;
+        }
     }
 
     // Storage helpers
@@ -106,19 +153,6 @@ export class Utils {
         return new Promise((resolve) => {
             chrome.storage.local.set(data, resolve);
         });
-    }
-
-    // Debounce utility
-    static debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
     }
 }
 

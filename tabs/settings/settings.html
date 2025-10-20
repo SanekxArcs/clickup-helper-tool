@@ -1,194 +1,217 @@
 <!-- Settings Tab -->
-<div id="settings-tab" class="tab-content hidden">
-<div class="mb-5">
-    <label for="apiKey" class="block mb-2 font-semibold text-gray-700">Gemini API Key:</label>
-    <input type="password" id="apiKey" placeholder="Enter your Gemini API key" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-</div>
-
-<div class="mb-4">
-    <label for="geminiModel" class="block mb-2 font-semibold text-gray-700">Gemini Model:</label>
-    <select id="geminiModel" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-        <option value="gemini-2.5-pro">Gemini 2.5 Pro (5 RPM, 100 RPD)</option>
-        <option value="gemini-2.5-flash">Gemini 2.5 Flash (10 RPM, 250 RPD)</option>
-        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (15 RPM, 1,000 RPD)</option>
-        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (15 RPM, 200 RPD)</option>
-        <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (30 RPM, 200 RPD)</option>
-        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy)</option>
-        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Legacy)</option>
-    </select>
-</div>
-
-<div class="mb-4">
-    <label for="temperature" class="block mb-2 font-semibold text-gray-700">AI Creativity (Temperature):</label>
-    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.3" class="w-full">
-    <span id="temperatureValue" class="text-sm text-gray-600">0.3</span>
-</div>
-
-<div class="mb-4">
-    <label for="timeEstimationPrompt" class="block mb-2 font-semibold text-gray-700">⏱️ Time Estimation Prompt:</label>
-    <textarea id="timeEstimationPrompt" placeholder="Custom prompt for time estimation generation..." class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-32 resize-y"></textarea>
-    <div class="text-xs text-gray-500 mt-1">
-        <small>Customize the AI prompt for time estimation. Use {taskId}, {taskTitle}, and {taskDescription} as placeholders.</small>
+<div id="settings-tab" class="tab-content z-0 hidden">
+    <!-- Header Section -->
+    <div class="mb-8 pb-6 border-b-2 border-gray-200">
+        <h2 class="text-xl font-bold text-gray-800 mb-1">⚙️ Settings & Configuration</h2>
+        <p class="text-sm text-gray-600">Manage your AI model, API key, and customization preferences</p>
     </div>
-</div>
 
-<!-- Rate Limits Display -->
-<div class="mb-4">
-    <label class="block mb-2 font-semibold text-gray-700">Rate Limits (Based on Selected Model):</label>
-    <div id="rateLimitsDisplay" class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-1">
-        <div class="flex items-center mb-3 gap-2.5 last:mb-2">
-            <span class="font-semibold text-gray-700 min-w-[80px] text-xs">Per Minute:</span>
-            <span id="minuteUsage" class="font-mono text-xs text-gray-600 min-w-[60px] text-right">0 / 15</span>
-            <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div id="minuteBar" class="rate-limit-progress h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-300 w-0"></div>
+    <!-- API & Model Configuration Section -->
+    <div class="mb-8 bg-gradient-to-r from-blue-50 to-blue-50 border-l-4 border-blue-400 rounded-lg p-5">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>🔑 API & Model Configuration</span>
+        </h3>
+        
+        <div class="mb-5">
+            <label for="apiKey" class="block mb-2 font-semibold text-gray-700">Gemini API Key:</label>
+            <input type="password" id="apiKey" placeholder="Enter your Gemini API key" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 bg-white">
+            <div class="text-xs text-gray-500 mt-1">Your API key is stored locally and never shared</div>
+        </div>
+
+        <div class="mb-5">
+            <label for="temperature" class="block mb-2 font-semibold text-gray-700">Creativity Level:</label>
+            <div class="flex items-center gap-3">
+                <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.3" class="flex-1">
+                <span id="temperatureValue" class="font-mono text-sm font-semibold text-blue-600 min-w-[30px] text-center">0.3</span>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">Lower = more precise, Higher = more creative</div>
+        </div>
+
+        <!-- Rate Limits Display -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-5">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-sm font-semibold text-gray-700">📊 API Rate Limits</span>
+                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Dynamic</span>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm text-gray-700">Per Minute:</span>
+                        <span id="minuteUsage" class="font-mono text-xs font-semibold text-gray-700">0 / 15</span>
+                    </div>
+                    <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="minuteBar" class="rate-limit-progress h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-300 w-0"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm text-gray-700">Per Day:</span>
+                        <span id="dayUsage" class="font-mono text-xs font-semibold text-gray-700">0 / 1,500</span>
+                    </div>
+                    <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="dayBar" class="rate-limit-progress h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-300 w-0"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-3 text-center">
+                <small id="rateLimitReset" class="text-gray-500 text-xs">Using Gemini 2.5 Flash-Lite model</small>
             </div>
         </div>
-        <div class="flex items-center mb-3 gap-2.5 last:mb-2">
-            <span class="font-semibold text-gray-700 min-w-[80px] text-xs">Per Day:</span>
-            <span id="dayUsage" class="font-mono text-xs text-gray-600 min-w-[60px] text-right">0 / 1,500</span>
-            <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div id="dayBar" class="rate-limit-progress h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-300 w-0"></div>
-            </div>
-        </div>
-        <div class="text-center mt-2">
-            <small id="rateLimitReset" class="text-gray-500 text-xs">Rate limits update automatically based on selected model</small>
-        </div>
-    </div>
-</div>
 
-<button id="saveSettingsBtn" class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-emerald-100 transition-all duration-300">💾 Save Settings</button>
-
-<div id="settingsSaved" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-2.5 hidden">
-    Settings saved successfully!
-</div>
-
-<!-- Rules Management Section -->
-<div class="mt-8 mb-4">
-    <label class="block mb-2 font-semibold text-gray-700">📋 Generation Rules:</label>
-    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-1">
-        <div class="text-xs text-gray-600 mb-3">
-            Configure custom rules for branch naming and commit message generation.
-        </div>
-        <button id="openRulesModalBtn" class="bg-blue-50 ring-1 ring-blue-400 text-black border-none px-4 py-2 rounded cursor-pointer text-sm font-medium hover:bg-blue-100 transition-all duration-300">
-            ⚙️ Manage Generation Rules
+        <button id="saveSettingsBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2">
+            <span>💾</span> Save API Settings
         </button>
     </div>
-</div>
 
-<!-- Keyboard Shortcuts Section -->
-<div class="mt-8 mb-4">
-    <label class="block mb-2 font-semibold text-gray-700">⌨️ Keyboard Shortcuts (Max 4):</label>
-    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-1">
-        <div class="mb-3">
-            <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-medium text-gray-700">Open Extension:</span>
-                <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+1</span>
+    <!-- Time Estimation Section -->
+    <div class="mb-8 bg-gradient-to-r from-amber-50 to-amber-50 border-l-4 border-amber-400 rounded-lg p-5">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>⏱️ Time Estimation</span>
+        </h3>
+        
+        <div class="mb-4">
+            <label for="timeEstimationPrompt" class="block mb-2 font-semibold text-gray-700">Custom Prompt:</label>
+            <textarea id="timeEstimationPrompt" placeholder="Custom prompt for time estimation generation..." class="w-full p-3 border-2 border-gray-200 rounded-lg text-sm transition-colors duration-300 box-border focus:outline-none focus:border-amber-500 h-24 resize-none bg-white"></textarea>
+            <div class="text-xs text-gray-500 mt-2 leading-relaxed">
+                Customize the AI prompt for time estimation. Use <code class="bg-gray-200 px-1.5 py-0.5 rounded text-xs">{taskId}</code>, <code class="bg-gray-200 px-1.5 py-0.5 rounded text-xs">{taskTitle}</code>, and <code class="bg-gray-200 px-1.5 py-0.5 rounded text-xs">{taskDescription}</code> as placeholders.
             </div>
-            <div class="text-xs text-gray-500">Open the extension popup (uses _execute_action)</div>
+        </div>
+
+        <button id="saveTimeEstimationBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2">
+            <span>💾</span> Save Time Estimation Prompt
+        </button>
+    </div>
+
+    <!-- Rules Management Section -->
+    <div class="mb-8 bg-gradient-to-r from-indigo-50 to-indigo-50 border-l-4 border-indigo-400 rounded-lg p-5">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>📋 Generation Rules</span>
+        </h3>
+        
+        <div class="text-sm text-gray-600 mb-4 bg-white p-3 rounded-lg border border-indigo-100">
+            Define custom rules for branch naming and commit message generation that the AI will follow.
         </div>
         
-        <div class="mb-3">
-            <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-medium text-gray-700">Quick Generate:</span>
-                <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+2</span>
+        <button id="openRulesModalBtn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2">
+            <span>⚙️</span> Manage Generation Rules
+        </button>
+    </div>
+
+    <!-- Keyboard Shortcuts Section -->
+    <div class="mb-8 bg-gradient-to-r from-purple-50 to-purple-50 border-l-4 border-purple-400 rounded-lg p-5">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>⌨️ Keyboard Shortcuts</span>
+            <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Max 4</span>
+        </h3>
+        
+        <div class="grid grid-cols-1 gap-3 mb-5">
+            <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
+                <div>
+                    <div class="font-medium text-sm text-gray-700">Open Extension</div>
+                    <div class="text-xs text-gray-500 mt-0.5">Open the extension popup</div>
+                </div>
+                <span class="text-xs font-mono text-purple-600 bg-purple-100 px-2.5 py-1 rounded border border-purple-200">Ctrl+Shift+1</span>
             </div>
-            <div class="text-xs text-gray-500">Auto-fill and generate immediately</div>
+            
+            <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
+                <div>
+                    <div class="font-medium text-sm text-gray-700">Quick Generate</div>
+                    <div class="text-xs text-gray-500 mt-0.5">Auto-fill and generate immediately</div>
+                </div>
+                <span class="text-xs font-mono text-purple-600 bg-purple-100 px-2.5 py-1 rounded border border-purple-200">Ctrl+Shift+2</span>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
+                <div>
+                    <div class="font-medium text-sm text-gray-700">Auto-fill Only</div>
+                    <div class="text-xs text-gray-500 mt-0.5">Extract data from current page</div>
+                </div>
+                <span class="text-xs font-mono text-purple-600 bg-purple-100 px-2.5 py-1 rounded border border-purple-200">Ctrl+Shift+3</span>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
+                <div>
+                    <div class="font-medium text-sm text-gray-700">Copy Last Branch</div>
+                    <div class="text-xs text-gray-500 mt-0.5">Copy last generated branch name</div>
+                </div>
+                <span class="text-xs font-mono text-purple-600 bg-purple-100 px-2.5 py-1 rounded border border-purple-200">Ctrl+Shift+4</span>
+            </div>
         </div>
         
-        <div class="mb-3">
-            <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-medium text-gray-700">Auto-fill Only:</span>
-                <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+3</span>
-            </div>
-            <div class="text-xs text-gray-500">Extract data from current page only</div>
+        <button id="openShortcutsPage" class="w-full bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-300 px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2">
+            <span>🔧</span> Customize Shortcuts in Chrome
+        </button>
+    </div>
+
+    <!-- Data Backup & Restore Section -->
+    <div class="mb-8 bg-gradient-to-r from-emerald-50 to-emerald-50 border-l-4 border-emerald-400 rounded-lg p-5">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>💾 Data Backup & Restore</span>
+        </h3>
+        
+        <div class="text-sm text-gray-600 mb-4 bg-white p-3 rounded-lg border border-emerald-100">
+            <div class="mb-2"><strong>📤 Export:</strong> Download all settings, rules, and history as a JSON file</div>
+            <div><strong>📥 Import:</strong> Restore your configuration from a previously exported file</div>
         </div>
         
-        <div class="mb-3">
-            <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-medium text-gray-700">Copy Last Branch:</span>
-                <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+4</span>
-            </div>
-            <div class="text-xs text-gray-500">Copy last generated branch name to clipboard</div>
-        </div>
-        
-        <div class="text-xs text-gray-500 mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-            <div class="font-medium text-blue-700 mb-1">⚙️ Customize Shortcuts:</div>
-            <div>• Open <code class="bg-blue-100 px-1 rounded text-xs">chrome://extensions/shortcuts</code></div>
-            <div>• Find "Branch & Commit Helper"</div>
-            <div>• Set your preferred key combinations</div>
-            <div class="mt-2">
-                <button id="openShortcutsPage" class="text-xs px-3 py-1.5 bg-blue-100 border border-blue-300 rounded hover:bg-blue-200 transition-colors">🔧 Open Shortcuts Settings</button>
-            </div>
+        <div class="flex gap-3 mb-4">
+            <button id="exportDataBtn" type="button" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2">
+                <span>📤</span> Export Data
+            </button>
+            <button id="importDataBtn" type="button" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2">
+                <span>📥</span> Import Data
+            </button>
+            <input type="file" id="importFileInput" accept=".json" class="hidden">
         </div>
     </div>
-</div>
-
-<!-- Data Import/Export Section -->
-<div class="mt-8 mb-4">
-    <label class="block mb-2 font-semibold text-gray-700">Data Backup & Restore:</label>
-    <div class="flex gap-2.5 mb-2.5">
-        <button id="exportDataBtn" type="button" class=" bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-emerald-100 transition-all duration-300">📤 Export Data</button>
-        <button id="importDataBtn" type="button" class="flex-1 bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap  w-full hover:bg-blue-100 transition-all duration-300">📥 Import Data</button>
-        <input type="file" id="importFileInput" accept=".json" class="hidden">
-    </div>
-    <div class="text-xs text-gray-500 leading-relaxed">
-        <small class="block">Export: Download all your settings, rules, and history as JSON</small>
-        <small class="block">Import: Restore data from a previously exported JSON file</small>
-    </div>
-</div>
-
-<div id="exportSuccess" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-2.5 hidden">
-    Data exported successfully!
-</div>
-
-<div id="importSuccess" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-2.5 hidden">
-    Data imported successfully!
-</div>
-
-<div id="importError" class="text-red-500 bg-red-100 p-2.5 rounded-md mt-2.5 hidden"></div>
 
 <!-- Rules Management Modal -->
 <div id="rulesModal" class="rules-modal hidden fixed top-0 left-0 w-full h-full bg-black/50 z-[1000] backdrop-blur-sm">
-    <div class="rules-modal-content bg-white rounded-xl p-6 w-[600px] max-w-[90vw] max-h-[80vh] overflow-y-auto shadow-2xl modal-animation">
-        <div class="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-700 m-0">📋 Generation Rules</h3>
-            <button class="bg-transparent border-none text-2xl cursor-pointer text-gray-500 w-auto m-0 p-0 leading-none hover:text-red-500 hover:transform-none hover:shadow-none" id="rulesModalCloseBtn">&times;</button>
+    <div class="rules-modal-content bg-white rounded-xl p-6 w-[650px] max-w-[90vw] max-h-[85vh] overflow-y-auto shadow-2xl modal-animation">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-800 m-0">📋 Generation Rules</h3>
+            <button class="bg-transparent border-none text-2xl cursor-pointer text-gray-500 w-auto m-0 p-0 leading-none hover:text-red-500 transition-colors" id="rulesModalCloseBtn">&times;</button>
         </div>
         
-        <div class="mb-4">
-            <label for="branchRules" class="block mb-2 font-semibold text-gray-700">Branch Naming Rules:</label>
-            <textarea id="branchRules" placeholder="Enter your branch naming conventions and rules..." class="w-full p-3 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-32 resize-y"></textarea>
-            <div class="text-xs text-gray-500 mt-1">
-                Define how branch names should be formatted, prefixes to use, and naming conventions.
+        <div class="space-y-5 mb-6">
+            <div>
+                <label for="branchRules" class="block mb-2 font-semibold text-gray-700">🌿 Branch Naming Rules:</label>
+                <textarea id="branchRules" placeholder="Enter your branch naming conventions and rules..." class="w-full p-3 border-2 border-gray-200 rounded-lg text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-28 resize-none bg-white"></textarea>
+                <div class="text-xs text-gray-500 mt-1.5">
+                    Define how branch names should be formatted, prefixes to use, and naming conventions.
+                </div>
+            </div>
+            
+            <div>
+                <label for="commitRules" class="block mb-2 font-semibold text-gray-700">💬 Commit Message Rules:</label>
+                <textarea id="commitRules" placeholder="Enter your commit message conventions and rules..." class="w-full p-3 border-2 border-gray-200 rounded-lg text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-28 resize-none bg-white"></textarea>
+                <div class="text-xs text-gray-500 mt-1.5">
+                    Specify commit message format, conventional commits structure, and team-specific requirements.
+                </div>
             </div>
         </div>
         
-        <div class="mb-4">
-            <label for="commitRules" class="block mb-2 font-semibold text-gray-700">Commit Message Rules:</label>
-            <textarea id="commitRules" placeholder="Enter your commit message conventions and rules..." class="w-full p-3 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-32 resize-y"></textarea>
-            <div class="text-xs text-gray-500 mt-1">
-                Specify commit message format, conventional commits structure, and any team-specific requirements.
-            </div>
-        </div>
-        
-        <div class="bg-blue-50 p-4 rounded-lg mb-4">
+        <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
             <h4 class="text-sm font-semibold text-blue-700 mb-2">💡 Default Examples:</h4>
-            <div class="text-xs text-blue-600 space-y-1">
+            <div class="text-xs text-blue-600 space-y-1 mb-3">
                 <div><strong>Branch:</strong> feature/task-id-short-description, hotfix/urgent-fix-name</div>
                 <div><strong>Commit:</strong> feat: add new feature, fix: resolve critical bug</div>
             </div>
-            <button id="loadDefaultRulesBtn" class="mt-3 bg-blue-100 border border-blue-300 text-blue-700 px-3 py-1.5 rounded text-xs hover:bg-blue-200 transition-colors">
+            <button id="loadDefaultRulesBtn" class="w-full bg-blue-100 border border-blue-300 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-200 transition-colors">
                 📝 Load Default Rules
             </button>
         </div>
         
-        <div class="flex gap-3 mt-5 pt-4 border-t border-gray-200">
-            <button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-4 py-3 rounded cursor-pointer text-sm font-medium flex-1 hover:bg-emerald-100 transition-all duration-300" id="saveRulesBtn">💾 Save Rules</button>
-            <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-4 py-3 rounded cursor-pointer text-sm font-medium flex-1 hover:bg-gray-100 transition-all duration-300" id="rulesModalCancelBtn">❌ Cancel</button>
-        </div>
-        
-        <div id="rulesSaved" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-3 hidden">
-            Rules saved successfully!
+        <div class="flex gap-3 pt-4 border-t border-gray-200">
+            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2" id="saveRulesBtn">
+                <span>💾</span> Save Rules
+            </button>
+            <button class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2" id="rulesModalCancelBtn">
+                <span>❌</span> Cancel
+            </button>
         </div>
     </div>
 </div>

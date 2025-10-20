@@ -565,7 +565,7 @@ export class HistoryTab {    constructor() {
             if (tab.url.startsWith('https://app.clickup.com/t/')) {
                 // Try to extract task data from the current page
                 try {
-                    const response = await chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_TASK_DATA' });
+                    const response = await Utils.safeSendMessage(tab.id, { type: 'EXTRACT_TASK_DATA' });
                     
                     if (response && (response.id || response.title)) {
                         // Auto-search for the task ID or title
@@ -585,7 +585,7 @@ export class HistoryTab {    constructor() {
                         return true; // Found and searched
                     }
                 } catch (error) {
-                    console.log('Could not extract task data from current page:', error);
+                    console.debug('Could not extract task data from current page:', error);
                 }
             }
             

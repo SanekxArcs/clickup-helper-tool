@@ -1,12 +1,14 @@
+import { ToastManager } from '../../../shared/toast-manager.js';
+
 export class UIHelpers {
     static showAuthSection() {
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('main-controls').classList.add('hidden');
+        document.getElementById('auth-section')?.classList.remove('hidden');
+        document.getElementById('main-controls')?.classList.add('hidden');
     }
 
     static showMainControls() {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-controls').classList.remove('hidden');
+        document.getElementById('auth-section')?.classList.add('hidden');
+        document.getElementById('main-controls')?.classList.remove('hidden');
     }
 
     static updateConnectionStatus(status, message) {
@@ -15,7 +17,7 @@ export class UIHelpers {
 
         if (indicator && text) {
             indicator.className = 'w-3 h-3 rounded-full mr-3';
-            
+
             switch (status) {
                 case 'connected':
                     indicator.classList.add('bg-green-500');
@@ -29,7 +31,7 @@ export class UIHelpers {
                 default:
                     indicator.classList.add('bg-yellow-500');
             }
-            
+
             text.textContent = message;
         }
     }
@@ -51,21 +53,7 @@ export class UIHelpers {
     }
 
     static showMessage(message, type = 'info') {
-        const container = document.getElementById('status-messages');
-        if (!container) return;
-
-        const messageEl = document.createElement('div');
-        messageEl.className = `p-3 rounded-md text-sm mb-2 ${UIHelpers.getMessageClasses(type)}`;
-        messageEl.textContent = message;
-
-        container.appendChild(messageEl);
-
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (messageEl.parentNode) {
-                messageEl.parentNode.removeChild(messageEl);
-            }
-        }, 5000);
+        ToastManager.show(message, type);
     }
 
     static showError(message, errorElement) {
@@ -73,20 +61,7 @@ export class UIHelpers {
             errorElement.textContent = message;
             errorElement.classList.remove('hidden');
         } else {
-            UIHelpers.showMessage(message, 'error');
-        }
-    }
-
-    static getMessageClasses(type) {
-        switch (type) {
-            case 'success':
-                return 'bg-green-50 text-green-700 border border-green-200';
-            case 'error':
-                return 'bg-red-50 text-red-700 border border-red-200';
-            case 'warning':
-                return 'bg-yellow-50 text-yellow-700 border border-yellow-200';
-            default:
-                return 'bg-blue-50 text-blue-700 border border-blue-200';
+            ToastManager.error(message);
         }
     }
 }

@@ -4,7 +4,7 @@ import { GenerateTab } from './tabs/generate/generate.js';
 import { HistoryTab } from './tabs/history/history.js';
 import { TemplatesTab } from './tabs/templates/templates.js';
 import { MattermostTab } from './tabs/mattermost/mattermost-refactored.js';
-import { SettingsTab } from './tabs/settings/settings.js';
+import { SettingsTab } from './tabs/settings/settings-refactored.js';
 import { ToolsTab } from './tabs/tools/tools.js';
 import { Utils } from './shared/utils.js';
 
@@ -115,6 +115,8 @@ class Application {
         // Initialize Settings tab
         this.tabs.settings = new SettingsTab();
         this.tabManager.registerTab('settings', this.tabs.settings);
+        // Initialize settings after HTML is loaded
+        await this.tabs.settings.initialize();
 
         // Initialize Tools tab
         this.tabs.tools = new ToolsTab();
