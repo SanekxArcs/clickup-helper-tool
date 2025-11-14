@@ -54,10 +54,9 @@ export class MeetCustomRoomManager {
         return `
             <div class="flex items-center justify-between p-3 border bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                 <div class="flex items-center space-x-3">
-                    <div class="text-2xl">${Utils.escapeHtml(emoji)}</div>
                     <div>
                         <div class="font-medium text-gray-800">${Utils.escapeHtml(roomCode)}</div>
-                        <div class="text-xs text-gray-500">"${Utils.escapeHtml(text)}" • ${availability}</div>
+                        <div class="text-xs text-gray-500">"${Utils.escapeHtml(text)}" • ${availability} • icon: ${Utils.escapeHtml(emoji)}</div>
                     </div>
                 </div>
                 <div class="flex gap-2">

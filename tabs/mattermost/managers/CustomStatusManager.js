@@ -66,7 +66,6 @@ export class CustomStatusManager {
             <div class="flex items-center justify-between p-3 border bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                 <button class="apply-preset-btn flex-1  text-left" data-preset-id="${preset.id}">
                     <div class="flex items-center space-x-3">
-                        <span class="text-lg">:${preset.emoji}:</span>
                         <div class="font-medium text-gray-800">${Utils.escapeHtml(preset.title)}</div>
                         <div class="flex-1">
                             <div class="flex items-center space-x-2 text-xs text-gray-500">
@@ -74,6 +73,8 @@ export class CustomStatusManager {
                                     ${preset.availability.toUpperCase()}
                                 </span>
                                 <span>${durationText}</span>
+                                <span>${preset.emoji}</span>
+
                             </div>
                         </div>
                     </div>
