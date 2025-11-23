@@ -21,9 +21,9 @@ export class ToastManager {
             container.id = 'status-messages';
             container.style.cssText = [
                 'position: fixed',
-                'top: 100px',
+                'top: 80px',
                 'right: 16px',
-                'z-index: 9999',
+                'z-index: 2147483647',
                 'display: flex',
                 'flex-direction: column',
                 'gap: 8px',
