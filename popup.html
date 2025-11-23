@@ -6,250 +6,23 @@
     <script src="./tailwind.config.js"></script>
     <link rel="stylesheet" href="custom.css">
 </head>
-<body class="w-[500px] p-5 font-sans bg-gradient-to-br from-blue-500 to-purple-600 text-white m-0">
+<body class="w-full font-sans rounded-md bg-black text-black m-0">
+    <div class="absolute top-1 left-1 text-xs scale-75">V25.11.23</div>
     <div class="bg-white/95 h-full rounded-xl p-5 text-gray-800 shadow-2xl">
-        <div class="flex mb-3 bg-gray-50 gap-1 rounded-lg">
-            <div class="tab flex-1 px-2.5 py-0.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium bg-blue-500 text-white" data-tab="generate">Generate</div>
-            <div class="tab flex-1 px-2.5 py-0.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="history">History</div>
-            <div class="tab flex-1 px-2.5 py-0.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="templates">Templates</div>
-            <div class="tab flex-1 px-2.5 py-0.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="mattermost">Mattermost</div>
-            <div class="tab flex-1 px-2.5 py-0.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="tools">Tools</div>
-            <div class="tab flex-1 px-2.5 py-0.5 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="settings">Settings</div>
+        
+        <!-- Tab Navigation -->
+        <div class="flex mb-5 bg-blue-100 gap-1 rounded-lg">
+            <div class="tab flex-1 px-2.5 py-2 text-center cursor-pointer rounded-md transition-all duration-300 font-medium bg-blue-500 text-white" data-tab="generate">Generate</div>
+            <div class="tab flex-1 px-2.5 py-2 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="history">History</div>
+            <div class="tab flex-1 px-2.5 py-2 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="templates">Templates</div>
+            <div class="tab flex-1 px-2.5 py-2 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="mattermost">Mattermost</div>
+            <div class="tab flex-1 px-2.5 py-2 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="tools">Tools</div>
+            <div class="tab flex-1 px-2.5 py-2 text-center cursor-pointer rounded-md transition-all duration-300 font-medium hover:bg-gray-100" data-tab="settings">Settings</div>
         </div>
         
-        <!-- Generate Tab -->
-        <div id="generate-tab" class="tab-content block">
-            <div id="rateLimitWarning" class="bg-red-100 text-red-700 p-2.5 rounded-md mb-4 text-xs border-l-4 border-red-500 hidden">
-                ⚠️ Rate limit reached. Free tier: 15 requests/minute, 1,500 requests/day. Please wait.
-            </div>
-            
-            <div class="flex gap-1 items-center mb-4">
-                <button id="autoFillBtn" class=" bg-orange-50 ring-1 ring-orange-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-orange-100 transition-all duration-300">📋 Auto-fill from current page</button>
-                <button id="clearFieldsBtn" class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-red-100 transition-all duration-300">🗑️ Clear Fields</button>
-            </div>
-            <div class="flex gap-1 items-center mb-4">
-                <button id="saveTaskBtn" class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-emerald-100 transition-all duration-300">📋 Copy MD Link</button>
-            </div>
-            
-            <!-- Priority Indicator -->
-            <div id="priorityIndicator" class="bg-red-100 text-red-700 p-2.5 rounded-md mb-4 text-xs border-l-4 border-red-500 hidden">
-                🚨 URGENT task detected! Will use hotfix/ branch prefix and feat: commit prefix.
-            </div>
-            
-            <div class="mb-4">
-                <label for="taskId" class="block mb-2 font-semibold text-gray-700">Task ID:</label>
-                <input type="text" id="taskId" placeholder="e.g., WDEV-13729" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-            </div>
-            
-            <div class="mb-4">
-                <label for="taskTitle" class="block mb-2 font-semibold text-gray-700">Task Title:</label>
-                <input type="text" id="taskTitle" placeholder="Brief task description" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-            </div>
-            
-            <div class="mb-4">
-                <label for="taskDescription" class="block mb-2 font-semibold text-gray-700">Task Description:</label>
-                <textarea id="taskDescription" placeholder="Detailed task description" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-20 resize-y"></textarea>
-            </div>
-            
-            <button id="generateBtn" class="bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-blue-100 transition-all duration-300">🎯 Generate Branch & Commit</button>
-            
-            <button id="timeEstimationBtn" class="bg-purple-50 ring-1 ring-purple-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-purple-100 transition-all duration-300 mt-2">⏱️ Generate Time Estimation</button>
-            
-            <div id="results" class="mt-5 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500 hidden">
-                <div class="mb-4">
-                    <div class="font-semibold text-gray-700 mb-2">Branch Name:</div>
-                    <div id="branchResult" class="bg-white p-2.5 rounded-md border border-gray-200 font-mono text-xs break-all relative select-all cursor-text hover:bg-gray-50 hover:border-gray-300"></div>
-                    <button id="copyBranchBtn" class="copy-btn bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-[100px] hover:bg-emerald-100 transition-all duration-300 mt-2">📋 Copy</button>
-                </div>
-                
-                <div class="mb-4">
-                    <div class="font-semibold text-gray-700 mb-2">Commit Message:</div>
-                    <div id="commitResult" class="bg-white p-2.5 rounded-md border border-gray-200 font-mono text-xs break-all relative select-all cursor-text hover:bg-gray-50 hover:border-gray-300"></div>
-                    <button id="copyCommitBtn" class="copy-btn bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-[100px] hover:bg-emerald-100 transition-all duration-300 mt-2">📋 Copy</button>
-                </div>
-            </div>
-            
-            <div id="timeEstimationResults" class="mt-5 p-4 bg-purple-50 rounded-lg border-l-4 border-purple-500 hidden">
-                <div class="mb-4">
-                    <div class="font-semibold text-gray-700 mb-2">⏱️ Time Estimations:</div>
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between p-2 bg-white rounded-md border border-gray-200">
-                            <span class="font-medium text-green-700">👨‍💻 Senior Developer:</span>
-                            <span id="seniorTime" class="font-mono text-sm text-gray-700"></span>
-                        </div>
-                        <div class="flex items-center justify-between p-2 bg-white rounded-md border border-gray-200">
-                            <span class="font-medium text-blue-700">👩‍💻 Mid-level Developer:</span>
-                            <span id="midTime" class="font-mono text-sm text-gray-700"></span>
-                        </div>
-                        <div class="flex items-center justify-between p-2 bg-white rounded-md border border-gray-200">
-                            <span class="font-medium text-orange-700">👨‍🎓 Junior Developer:</span>
-                            <span id="juniorTime" class="font-mono text-sm text-gray-700"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <div class="font-semibold text-gray-700 mb-2">💭 Reasoning:</div>
-                    <div id="timeReasoning" class="bg-white p-2.5 rounded-md border border-gray-200 text-sm text-gray-700"></div>
-                </div>
-                
-                <button id="copyTimeEstimationBtn" class="copy-btn bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap w-full hover:bg-emerald-100 transition-all duration-300">📋 Copy Time Estimation</button>
-            </div>
-            
-            <div id="loading" class="text-center text-gray-500 italic hidden">
-                Generating with Gemini AI...
-            </div>
-            
-            <div id="error" class="text-red-500 bg-red-100 p-2.5 rounded-md mt-2.5 hidden"></div>
-        </div>
-        
-        <!-- History Tab -->
-        <div id="history-tab" class="tab-content hidden">
-            <div class="mb-4">
-                <label for="historySearch" class="block mb-2 font-semibold text-gray-700">🔍 Search History:</label>
-                <input type="text" id="historySearch" placeholder="Search by task ID or title..." class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-            </div>
-            
-            <div id="historyContainer">
-                <div class="text-center text-gray-500 italic py-10 px-5">
-                    No generation history yet. Generate some branch names and commit messages to see them here!
-                </div>
-            </div>
-            
-            <button id="clearHistoryBtn" class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-red-100 transition-all duration-300">🗑️ Clear All History</button>
-        </div>
-        
-        <!-- Settings Tab -->
-        <div id="settings-tab" class="tab-content hidden">
-            <div class="mb-5">
-                <label for="apiKey" class="block mb-2 font-semibold text-gray-700">Gemini API Key:</label>
-                <input type="password" id="apiKey" placeholder="Enter your Gemini API key" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-            </div>
-            
-            <div class="mb-4">
-                <label for="geminiModel" class="block mb-2 font-semibold text-gray-700">Gemini Model:</label>
-                <select id="geminiModel" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                </select>
-            </div>
-            
-            <div class="mb-4">
-                <label for="temperature" class="block mb-2 font-semibold text-gray-700">AI Creativity (Temperature):</label>
-                <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.3" class="w-full">
-                <span id="temperatureValue" class="text-sm text-gray-600">0.3</span>
-            </div>
-            
-            <div class="mb-4">
-                <label for="timeEstimationPrompt" class="block mb-2 font-semibold text-gray-700">⏱️ Time Estimation Prompt:</label>
-                <textarea id="timeEstimationPrompt" placeholder="Custom prompt for time estimation generation..." class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500 h-32 resize-y"></textarea>
-                <div class="text-xs text-gray-500 mt-1">
-                    <small>Customize the AI prompt for time estimation. Use {taskId}, {taskTitle}, and {taskDescription} as placeholders.</small>
-                </div>
-            </div>
-            
-            <!-- Rate Limits Display -->
-            <div class="mb-4">
-                <label class="block mb-2 font-semibold text-gray-700">Rate Limits (Free Tier):</label>
-                <div id="rateLimitsDisplay" class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-1">
-                    <div class="flex items-center mb-3 gap-2.5 last:mb-2">
-                        <span class="font-semibold text-gray-700 min-w-[80px] text-xs">Per Minute:</span>
-                        <span id="minuteUsage" class="font-mono text-xs text-gray-600 min-w-[60px] text-right">0 / 15</span>
-                        <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div id="minuteBar" class="rate-limit-progress h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-300 w-0"></div>
-                        </div>
-                    </div>
-                    <div class="flex items-center mb-3 gap-2.5 last:mb-2">
-                        <span class="font-semibold text-gray-700 min-w-[80px] text-xs">Per Day:</span>
-                        <span id="dayUsage" class="font-mono text-xs text-gray-600 min-w-[60px] text-right">0 / 1,500</span>
-                        <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div id="dayBar" class="rate-limit-progress h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-300 w-0"></div>
-                        </div>
-                    </div>
-                    <div class="text-center mt-2">
-                        <small id="rateLimitReset" class="text-gray-500 text-xs">Limits reset automatically</small>
-                    </div>
-                </div>
-            </div>
-            
-            <button id="saveSettingsBtn" class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-emerald-100 transition-all duration-300">💾 Save Settings</button>
-            
-            <div id="settingsSaved" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-2.5 hidden">
-                Settings saved successfully!
-            </div>
-
-            <!-- Keyboard Shortcuts Section -->
-            <div class="mt-8 mb-4">
-                <label class="block mb-2 font-semibold text-gray-700">⌨️ Keyboard Shortcuts (Max 4):</label>
-                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-1">
-                    <div class="mb-3">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-sm font-medium text-gray-700">Open Extension:</span>
-                            <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+1</span>
-                        </div>
-                        <div class="text-xs text-gray-500">Open the extension popup (uses _execute_action)</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-sm font-medium text-gray-700">Quick Generate:</span>
-                            <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+2</span>
-                        </div>
-                        <div class="text-xs text-gray-500">Auto-fill and generate immediately</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-sm font-medium text-gray-700">Auto-fill Only:</span>
-                            <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+3</span>
-                        </div>
-                        <div class="text-xs text-gray-500">Extract data from current page only</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-sm font-medium text-gray-700">Copy Last Branch:</span>
-                            <span class="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border">Ctrl+Shift+4</span>
-                        </div>
-                        <div class="text-xs text-gray-500">Copy last generated branch name to clipboard</div>
-                    </div>
-                    
-                    <div class="text-xs text-gray-500 mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-                        <div class="font-medium text-blue-700 mb-1">⚙️ Customize Shortcuts:</div>
-                        <div>• Open <code class="bg-blue-100 px-1 rounded text-xs">chrome://extensions/shortcuts</code></div>
-                        <div>• Find "Branch & Commit Helper"</div>
-                        <div>• Set your preferred key combinations</div>
-                        <div class="mt-2">
-                            <button id="openShortcutsPage" class="text-xs px-3 py-1.5 bg-blue-100 border border-blue-300 rounded hover:bg-blue-200 transition-colors">🔧 Open Shortcuts Settings</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Data Import/Export Section -->
-            <div class="mt-8 mb-4">
-                <label class="block mb-2 font-semibold text-gray-700">Data Backup & Restore:</label>
-                <div class="flex gap-2.5 mb-2.5">
-                    <button id="exportDataBtn" type="button" class=" bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-emerald-100 transition-all duration-300">📤 Export Data</button>
-                    <button id="importDataBtn" type="button" class="flex-1 bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap  w-full hover:bg-blue-100 transition-all duration-300">📥 Import Data</button>
-                    <input type="file" id="importFileInput" accept=".json" class="hidden">
-                </div>
-                <div class="text-xs text-gray-500 leading-relaxed">
-                    <small class="block">Export: Download all your settings, rules, and history as JSON</small>
-                    <small class="block">Import: Restore data from a previously exported JSON file</small>
-                </div>
-            </div>
-            
-            <div id="exportSuccess" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-2.5 hidden">
-                Data exported successfully!
-            </div>
-            
-            <div id="importSuccess" class="text-green-700 bg-green-100 p-2.5 rounded-md mt-2.5 hidden">
-                Data imported successfully!
-            </div>
-            
-            <div id="importError" class="text-red-500 bg-red-100 p-2.5 rounded-md mt-2.5 hidden"></div>
+        <!-- Tab Content Container -->
+        <div id="tab-content-container">
+            <!-- Tab content will be loaded here dynamically -->
         </div>
     </div>
     
@@ -296,24 +69,6 @@
                 <input type="text" id="editCommitMessage" placeholder="feat: implement new feature" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
             </div>
             
-            <div class="mb-4">
-                <label for="editStatus" class="block mb-2 font-semibold text-gray-700">Status:</label>
-                <select id="editStatus" class="w-full p-2.5 border-2 border-gray-200 rounded-md text-sm transition-colors duration-300 box-border focus:outline-none focus:border-blue-500">
-                    <option value="in-specification">In Specification</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="code-review">Code Review</option>
-                    <option value="completed">Completed</option>
-                    <option value="in-review">In Review</option>
-                    <option value="rejected-cr">Rejected (CR)</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="blocked">Blocked</option>
-                    <option value="done">Done</option>
-                    <option value="on-hold">On Hold</option>
-                    <option value="ready-release">Ready to Release</option>
-                    <option value="closed">Closed</option>
-                </select>
-            </div>
-            
             <div class="flex gap-2.5 mt-5 pt-4 border-t border-gray-200">
                 <button class="bg-blue-50 ring-1 ring-blue-400 text-black  border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-blue-100 transition-all duration-300" id="editModalSaveBtn">💾 Save Changes</button>
                 <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-3 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 w-full hover:bg-red-100 transition-all duration-300" id="editModalCancelBtn">❌ Cancel</button>
@@ -321,6 +76,10 @@
         </div>
     </div>
     
-    <script src="popup.js"></script>
+    <!-- Global Toast Messages Container -->
+    <div id="status-messages" style="position: fixed; top: 100px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: auto;"></div>
+    
+    <!-- Load the main application script -->
+    <script type="module" src="popup-main.js"></script>
 </body>
 </html>

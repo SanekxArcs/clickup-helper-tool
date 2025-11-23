@@ -3,8 +3,8 @@ import { TabManager } from './shared/tab-manager.js';
 import { GenerateTab } from './tabs/generate/generate.js';
 import { HistoryTab } from './tabs/history/history.js';
 import { TemplatesTab } from './tabs/templates/templates.js';
-import { MattermostTab } from './tabs/mattermost/mattermost-refactored.js';
-import { SettingsTab } from './tabs/settings/settings-refactored.js';
+import { MattermostTab } from './tabs/mattermost/mattermost.js';
+import { SettingsTab } from './tabs/settings/settings.js';
 import { ToolsTab } from './tabs/tools/tools.js';
 import { Utils } from './shared/utils.js';
 

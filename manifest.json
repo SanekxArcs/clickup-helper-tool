@@ -36,7 +36,7 @@
     }
   ],
   "action": {
-    "default_popup": "popup-new.html",
+    "default_popup": "popup.html",
     "default_title": "Branch & Commit Helper"
   },
   "commands": {
