@@ -164,8 +164,8 @@ export class HistoryTab {    constructor() {
         
         // Create title with link if URL exists, otherwise plain text
         const taskTitleHtml = item.sourceUrl 
-            ? `<a href="${Utils.escapeHtml(item.sourceUrl)}" target="_blank" class="text-gray-700 no-underline font-semibold hover:text-blue-600 transition-colors text-sm" title="Open original task">${highlightedTaskId}: ${highlightedTitle}</a>`
-            : `<span class="text-gray-700 font-semibold text-sm">${highlightedTaskId}: ${highlightedTitle}</span>`;
+            ? `<a href="${Utils.escapeHtml(item.sourceUrl)}" target="_blank" class="text-gray-700 no-underline text-balance font-semibold hover:text-blue-600 transition-colors text-sm" title="Open original task">${highlightedTaskId}: ${highlightedTitle}</a>`
+            : `<span class="text-gray-700 font-semibold text-sm text-balance">${highlightedTaskId}: ${highlightedTitle}</span>`;
         
         // Action Buttons (Compact, Icons only)
         const actionButtons = `
@@ -185,7 +185,7 @@ export class HistoryTab {    constructor() {
                      data-copy-content="${Utils.escapeAttr(item.branchName)}" 
                      title="Click to copy branch name">
                     <span class="opacity-50 text-[10px] select-none">Branch:</span>
-                    <span class="flex-1">${Utils.escapeHtml(item.branchName)}</span>
+                    <span class="flex-1 text-balance">${Utils.escapeHtml(item.branchName)}</span>
                 </div>
             </div>
         ` : '';
@@ -197,7 +197,7 @@ export class HistoryTab {    constructor() {
                      data-copy-content="${Utils.escapeAttr(item.commitMessage)}" 
                      title="Click to copy commit message">
                     <span class="opacity-50 text-[10px] select-none">Commit:</span>
-                    <span class="flex-1">${Utils.escapeHtml(item.commitMessage)}</span>
+                    <span class="flex-1 text-balance">${Utils.escapeHtml(item.commitMessage)}</span>
                 </div>
             </div>
         ` : '';
@@ -224,24 +224,6 @@ export class HistoryTab {    constructor() {
 
                 ${branchBlock}
                 ${commitBlock}
-            </div>
-        `;
-    }
-
-    createStatusSelector(currentStatus, itemIndex) {
-        const statusConfig = this.statusConfig[currentStatus] || this.statusConfig['in-progress'];
-        const textColor = statusConfig.textColor || '#ffffff';
-        
-        return `
-            <div class="status-selector relative">
-                <select class="status-select px-2 py-1 rounded text-xs font-medium border-none cursor-pointer focus:outline-none transition-all duration-200" 
-                        style="background-color: ${statusConfig.color}; color: ${textColor};" 
-                        data-item-index="${itemIndex}">
-                    ${Object.entries(this.statusConfig).map(([key, config]) => {
-                        const selected = key === currentStatus ? 'selected' : '';
-                        return `<option value="${key}" ${selected} style="background-color: ${config.color}; color: ${config.textColor || '#ffffff'};">${config.label}</option>`;
-                    }).join('')}
-                </select>
             </div>
         `;
     }
