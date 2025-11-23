@@ -7,22 +7,6 @@ export class HistoryTab {    constructor() {
         this.currentEditIndex = null;
         this.timeEstimationService = new TimeEstimationService();
         
-        // Status configuration with colors
-        this.statusConfig = {
-            'in-specification': { label: 'In Specification', color: '#ffc53d' },
-            'in-progress': { label: 'In Progress', color: '#cf1761' },
-            'code-review': { label: 'Code Review', color: '#8cb99b' },
-            'completed': { label: 'Completed', color: '#000000' },
-            'in-review': { label: 'In Review', color: '#c36522' },
-            'rejected-cr': { label: 'Rejected (CR)', color: '#606060' },
-            'rejected': { label: 'Rejected', color: '#9e49ab' },
-            'blocked': { label: 'Blocked', color: '#8d7266' },
-            'done': { label: 'Done', color: '#ffffff', textColor: '#000000' },
-            'on-hold': { label: 'On Hold', color: '#d21e24' },
-            'ready-release': { label: 'Ready to Release', color: '#3b5dce' },
-            'closed': { label: 'Closed', color: '#2c8c5e' }
-        };
-        
         this.initialize();
     }
 
@@ -37,7 +21,6 @@ export class HistoryTab {    constructor() {
             clearHistoryBtn: document.getElementById('clearHistoryBtn'),
             historySearch: document.getElementById('historySearch'),
             clearSearchBtn: document.getElementById('clearSearchBtn'),
-            statusFilter: document.getElementById('statusFilter'),
             autoSearchIndicator: document.getElementById('autoSearchIndicator'),
             // Edit modal elements
             editModal: document.getElementById('editModal'),
@@ -50,8 +33,7 @@ export class HistoryTab {    constructor() {
             editSourceUrl: document.getElementById('editSourceUrl'),
             editGitlabMergeRequestUrl: document.getElementById('editGitlabMergeRequestUrl'),
             editBranchName: document.getElementById('editBranchName'),
-            editCommitMessage: document.getElementById('editCommitMessage'),
-            editStatus: document.getElementById('editStatus')
+            editCommitMessage: document.getElementById('editCommitMessage')
         };
     }
 
@@ -71,13 +53,6 @@ export class HistoryTab {    constructor() {
         if (this.elements.clearSearchBtn) {
             this.elements.clearSearchBtn.addEventListener('click', () => {
                 this.clearSearchField();
-            });
-        }
-
-        if (this.elements.statusFilter) {
-            this.elements.statusFilter.addEventListener('change', () => {
-                this.hideAutoSearchIndicator();
-                this.filterHistory();
             });
         }
 
@@ -112,7 +87,6 @@ export class HistoryTab {    constructor() {
         // Only clear search and load default history if no auto-search was performed
         if (!autoSearchPerformed) {
             this.elements.historySearch.value = '';
-            this.elements.statusFilter.value = '';
             this.toggleClearSearchButton();
             this.loadHistory();
         }
@@ -130,11 +104,6 @@ export class HistoryTab {    constructor() {
 
         const history = data.history || [];
         
-        // Add default status if not provided
-        if (!item.status) {
-            item.status = 'in-progress';
-        }
-        
         history.unshift(item); // Add to beginning
         
         // Keep only last 50 items
@@ -145,7 +114,7 @@ export class HistoryTab {    constructor() {
         chrome.storage.local.set({ history });
     }
 
-    async loadHistory(searchTerm = '', statusFilter = '') {
+    async loadHistory(searchTerm = '') {
         const data = await new Promise(resolve => {
             chrome.storage.local.get(['history'], resolve);
         });
@@ -161,23 +130,10 @@ export class HistoryTab {    constructor() {
             );
         }
         
-        // Filter by status if provided
-        if (statusFilter.trim()) {
-            history = history.filter(item => 
-                (item.status || 'in-progress') === statusFilter
-            );
-        }
-        
         if (history.length === 0) {
             let message;
-            if (searchTerm.trim() && statusFilter.trim()) {
-                const statusLabel = this.statusConfig[statusFilter]?.label || statusFilter;
-                message = `<div class="text-center text-gray-500 italic py-10 px-5">No ${statusLabel.toLowerCase()} items found matching "${Utils.escapeHtml(searchTerm.trim())}"</div>`;
-            } else if (searchTerm.trim()) {
+            if (searchTerm.trim()) {
                 message = `<div class="text-center text-gray-500 italic py-10 px-5">No history items found matching "${Utils.escapeHtml(searchTerm.trim())}"</div>`;
-            } else if (statusFilter.trim()) {
-                const statusLabel = this.statusConfig[statusFilter]?.label || statusFilter;
-                message = `<div class="text-center text-gray-500 italic py-10 px-5">No items with status "${statusLabel}"</div>`;
             } else {
                 message = '<div class="text-center text-gray-500 italic py-10 px-5">No generation history yet. Generate some branch names and commit messages to see them here!</div>';
             }
@@ -208,72 +164,66 @@ export class HistoryTab {    constructor() {
         
         // Create title with link if URL exists, otherwise plain text
         const taskTitleHtml = item.sourceUrl 
-            ? `<a href="${Utils.escapeHtml(item.sourceUrl)}" target="_blank" class="text-primary no-underline font-semibold hover:underline hover:text-primary-dark" title="Open original task">${highlightedTaskId}: ${highlightedTitle}</a>`
-            : `${highlightedTaskId}: ${highlightedTitle}`;
+            ? `<a href="${Utils.escapeHtml(item.sourceUrl)}" target="_blank" class="text-gray-700 no-underline font-semibold hover:text-blue-600 transition-colors text-sm" title="Open original task">${highlightedTaskId}: ${highlightedTitle}</a>`
+            : `<span class="text-gray-700 font-semibold text-sm">${highlightedTaskId}: ${highlightedTitle}</span>`;
         
-        // Create status selector
-        const currentStatus = item.status || 'in-progress';
-        const statusSelector = this.createStatusSelector(currentStatus, realIndex);
+        // Action Buttons (Compact, Icons only)
+        const actionButtons = `
+            <div class="flex gap-1 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                <button class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors border-none bg-transparent cursor-pointer" data-edit-index="${realIndex}" title="Edit">✏️</button>
+                <button class="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors border-none bg-transparent cursor-pointer ${item.timeEstimation ? 'opacity-100' : ''}" data-time-index="${realIndex}" title="${item.timeEstimation ? 'View time estimation' : 'Generate time estimation'}">⏱️</button>
+                <button class="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors border-none bg-transparent cursor-pointer" data-mattermost-index="${realIndex}" data-task-id="${Utils.escapeAttr(item.taskId)}" title="Set Mattermost status">💬</button>
+                <button class="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors border-none bg-transparent cursor-pointer" data-template-index="${realIndex}" title="Use in Templates">⏭️</button>
+                <button class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors border-none bg-transparent cursor-pointer" data-delete-index="${realIndex}" title="Delete">🗑️</button>
+            </div>
+        `;
+
+        // Branch Block
+        const branchBlock = item.branchName ? `
+            <div class="mt-2">
+                <div class="cursor-pointer bg-orange-50 hover:bg-orange-100 border border-orange-100 hover:border-orange-200 rounded px-2 py-1.5 font-mono text-xs text-gray-600 break-all transition-colors flex items-center gap-2 group/branch" 
+                     data-copy-content="${Utils.escapeAttr(item.branchName)}" 
+                     title="Click to copy branch name">
+                    <span class="opacity-50 text-[10px] select-none">Branch:</span>
+                    <span class="flex-1">${Utils.escapeHtml(item.branchName)}</span>
+                </div>
+            </div>
+        ` : '';
+
+        // Commit Block
+        const commitBlock = item.commitMessage ? `
+            <div class="mt-1">
+                <div class="cursor-pointer bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200 rounded px-2 py-1.5 font-mono text-xs text-gray-600 break-all transition-colors flex items-center gap-2 group/commit" 
+                     data-copy-content="${Utils.escapeAttr(item.commitMessage)}" 
+                     title="Click to copy commit message">
+                    <span class="opacity-50 text-[10px] select-none">Commit:</span>
+                    <span class="flex-1">${Utils.escapeHtml(item.commitMessage)}</span>
+                </div>
+            </div>
+        ` : '';
         
         return `
-            <div class="bg-white border related border-gray-200 rounded-lg p-4 mb-4 relative" data-history-index="${realIndex}">                <div class="absolute bottom-1 right-0 left-0 flex justify-between w-full gap-2 px-6">
-                    <button class="bg-gray-50 ring-1 ring-gray-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-gray-100 transition-all duration-300" data-edit-index="${realIndex}" title="Edit this item">✏️</button>
-                    <button class="bg-purple-50 ring-1 ring-purple-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-purple-100 transition-all duration-300 time-estimate-btn ${item.timeEstimation ? 'has-estimation' : ''}" data-time-index="${realIndex}" title="${item.timeEstimation ? 'View time estimation' : 'Generate time estimation'}">⏱️</button>
-                    <button class="bg-green-50 ring-1 ring-green-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-green-100 transition-all duration-300 mattermost-status-btn" data-mattermost-index="${realIndex}" data-task-id="${Utils.escapeAttr(item.taskId)}" title="Set Mattermost status: vscode + task ID">💬</button>
-                    <button class="bg-blue-50 ring-1 ring-blue-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-blue-100 transition-all duration-300" data-template-index="${realIndex}" title="Go to Templates">⏭️</button>
-                    <button class="bg-red-50 ring-1 ring-red-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-10 hover:bg-red-100 transition-all duration-300" data-delete-index="${realIndex}">🗑️</button>
-                </div>
-                
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-xs text-gray-500">${new Date(item.timestamp).toLocaleString()}</div>
-                    ${statusSelector}
+            <div class="group bg-white border border-gray-200 rounded-lg p-3 mb-3 transition-all duration-200 hover:shadow-md hover:border-gray-300" data-history-index="${realIndex}">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-[10px] text-gray-400">${new Date(item.timestamp).toLocaleString()}</div>
+                    ${actionButtons}
                 </div>
 
-                <div class="bg-gray-50 p-2.5 rounded-md font-mono text-xs mb-2.5">
-                    <div class="flex flex-row items-center gap-2 mb-2">
-                        <div class="font-semibold text-gray-700 mb-2 flex-1 text-balance">${taskTitleHtml}</div>
-                        ${markdownLink ? `<button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-auto hover:bg-emerald-100 transition-all duration-300" data-copy-text="${Utils.escapeAttr(markdownLink)}" title="Copy markdown link">📋</button>` : ''}
+                <div class="flex items-start gap-2 mb-1">
+                    <div class="flex-1">
+                        ${taskTitleHtml}
                     </div>
-                   
-                    ${item.branchName ? ` 
-                        <div class="flex flex-col">
-                            <strong>Branch:</strong>
-                            <div class="text-primary-dark flex flex-row gap-1 items-center">
-                                <div class="select-all w-full cursor-text bg-orange-50 py-1.5 px-2 rounded border border-gray-200 font-mono break-all transition-all duration-300 hover:bg-orange-100 hover:border-gray-300 text-balance" title="Click to select all">
-                                    ${Utils.escapeHtml(item.branchName)}
-                                </div>
-                                <button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-emerald-100 h-auto transition-all duration-300" data-copy-text="${Utils.escapeAttr(item.branchName)}">
-                                    📋
-                                </button>
-                            </div>
-                        </div>` : ''}
-                      ${item.commitMessage ? `
-                        <div class="flex flex-col">
-                            <strong>Commit:</strong>
-                            <div class="text-primary-dark flex flex-row gap-1 items-center">
-                                <div class="select-all cursor-text bg-blue-50 py-1.5 px-2 rounded border border-gray-200 font-mono break-all transition-all duration-300 hover:bg-blue-100 hover:border-gray-300 text-balance" title="Click to select all">${Utils.escapeHtml(item.commitMessage)}</div> 
-                                <button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-emerald-100 h-auto transition-all duration-300" data-copy-text="${Utils.escapeAttr(item.commitMessage)}">📋</button>
-                            </div>
-                        </div>` : ''}
-                    
-                    ${item.gitlabMergeRequestUrl ? `
-                        <div class="flex flex-col">
-                            <strong>GitLab MR:</strong>
-                            <div class="text-primary-dark flex flex-row gap-1 items-center">
-                                <a href="${Utils.escapeHtml(item.gitlabMergeRequestUrl)}" target="_blank" class="select-all cursor-pointer bg-purple-50 py-1.5 px-2 rounded border border-gray-200 font-mono break-all transition-all duration-300 hover:bg-purple-100 hover:border-gray-300 text-balance no-underline hover:underline" title="Open GitLab merge request">${Utils.escapeHtml(item.gitlabMergeRequestUrl)}</a>
-                                <button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap hover:bg-emerald-100 h-auto transition-all duration-300" data-copy-text="${Utils.escapeAttr(item.gitlabMergeRequestUrl)}">📋</button>
-                            </div>
-                        </div>` : ''}
-                    
-                    ${!item.branchName && !item.commitMessage ? `
-                        <div class="text-secondary italic py-2 px-2 bg-purple-50 rounded text-center mb-1">
-                            <em>📌 Task reference only (no generation performed)</em>
-                        </div>` : ''}
-                    
-                    <div class="flex gap-2 justify-start mt-2.5 pt-2.5 border-t border-gray-200">
-                        ${item.commitMessage ? `<button class="bg-emerald-50 ring-1 ring-emerald-400 text-black border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium whitespace-nowrap flex-1 max-w-full hover:bg-emerald-100 transition-all duration-300" data-commit-text="${Utils.escapeAttr(item.commitMessage)}" data-task-id="${Utils.escapeAttr(item.taskId)}">📋 Git console command</button>` : ''}
-                    </div>
+                    ${markdownLink ? `
+                        <button class="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors border-none bg-transparent cursor-pointer flex-shrink-0" 
+                                data-copy-text="${Utils.escapeAttr(markdownLink)}" 
+                                title="Copy Markdown Link">
+                            📋
+                        </button>
+                    ` : ''}
                 </div>
+
+                ${branchBlock}
+                ${commitBlock}
             </div>
         `;
     }
@@ -297,24 +247,36 @@ export class HistoryTab {    constructor() {
     }
 
     addHistoryEventListeners() {
-        // Add click listeners to copy buttons (branch/commit and markdown link)
+        // Add click listeners to copy buttons (markdown link)
         const copyButtons = this.elements.historyContainer.querySelectorAll('button[data-copy-text]');
         copyButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const text = this.getAttribute('data-copy-text');
                 Utils.copyToClipboard(text);
+                Utils.showNotification('Copied to clipboard!');
             });
         });
 
-        // Add click listeners to git commit buttons
-        const gitButtons = this.elements.historyContainer.querySelectorAll('button[data-commit-text]');
-        gitButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const commitText = this.getAttribute('data-commit-text');
-                const taskId = this.getAttribute('data-task-id');
-                const gitCommand = `git commit -m "${commitText}" --no-verify`;
-                Utils.copyToClipboard(gitCommand);
-                Utils.showNotification(`Git command copied: ${gitCommand}`);
+        // Add click listeners to copy content (branch/commit)
+        const copyContentElements = this.elements.historyContainer.querySelectorAll('[data-copy-content]');
+        copyContentElements.forEach(element => {
+            element.addEventListener('click', () => {
+                const text = element.getAttribute('data-copy-content');
+                Utils.copyToClipboard(text);
+                
+                // Visual feedback
+                const originalBg = element.style.backgroundColor;
+                const originalBorder = element.style.borderColor;
+                
+                element.style.backgroundColor = '#dcfce7'; // green-100
+                element.style.borderColor = '#86efac'; // green-300
+                
+                setTimeout(() => {
+                    element.style.backgroundColor = originalBg;
+                    element.style.borderColor = originalBorder;
+                }, 300);
+                
+                Utils.showNotification('Copied to clipboard!');
             });
         });
 
@@ -350,7 +312,7 @@ export class HistoryTab {    constructor() {
             });
             
             // Add hover functionality for buttons that already have estimations
-            if (button.classList.contains('has-estimation')) {
+            if (button.classList.contains('opacity-100')) {
                 button.addEventListener('mouseenter', async () => {
                     const index = parseInt(button.getAttribute('data-time-index'));
                     const data = await Utils.getStorageData(['history']);
@@ -371,41 +333,11 @@ export class HistoryTab {    constructor() {
                 await this.setMattermostStatus(taskId, button);
             });
         });
-
-        // Add click listeners to text areas for easy selection
-        const textAreas = this.elements.historyContainer.querySelectorAll('div[title="Click to select all"]');
-        textAreas.forEach(textArea => {
-            textArea.addEventListener('click', function() {
-                // Select all text when clicked
-                const range = document.createRange();
-                range.selectNodeContents(this);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-            });
-        });
-
-        // Add change listeners to status selectors
-        const statusSelectors = this.elements.historyContainer.querySelectorAll('.status-select');
-        statusSelectors.forEach(selector => {
-            selector.addEventListener('change', (e) => {
-                const itemIndex = parseInt(e.target.getAttribute('data-item-index'));
-                const newStatus = e.target.value;
-                this.updateItemStatus(itemIndex, newStatus);
-                
-                // Update the selector's appearance
-                const statusConfig = this.statusConfig[newStatus];
-                const textColor = statusConfig.textColor || '#ffffff';
-                e.target.style.backgroundColor = statusConfig.color;
-                e.target.style.color = textColor;
-            });
-        });
     }
 
     filterHistory() {
         const searchTerm = this.elements.historySearch.value;
-        const statusFilter = this.elements.statusFilter.value;
-        this.loadHistory(searchTerm, statusFilter);
+        this.loadHistory(searchTerm);
     }
 
     highlightSearchTerm(text, searchTerm) {
@@ -487,7 +419,6 @@ export class HistoryTab {    constructor() {
         this.elements.editGitlabMergeRequestUrl.value = item.gitlabMergeRequestUrl || '';
         this.elements.editBranchName.value = item.branchName || '';
         this.elements.editCommitMessage.value = item.commitMessage || '';
-        this.elements.editStatus.value = item.status || 'in-progress';
         
         // Show modal
         this.elements.editModal.classList.remove('hidden');
@@ -524,7 +455,6 @@ export class HistoryTab {    constructor() {
         item.gitlabMergeRequestUrl = this.elements.editGitlabMergeRequestUrl.value.trim();
         item.branchName = this.elements.editBranchName.value.trim();
         item.commitMessage = this.elements.editCommitMessage.value.trim();
-        item.status = this.elements.editStatus.value;
         
         // Update timestamp to show it was edited
         item.lastEdited = Date.now();
@@ -535,23 +465,6 @@ export class HistoryTab {    constructor() {
             this.filterHistory(); // Reload history with current filters to show changes
             Utils.showNotification('History item updated successfully');
         });
-    }
-
-    async updateItemStatus(itemIndex, newStatus) {
-        const data = await new Promise(resolve => {
-            chrome.storage.local.get(['history'], resolve);
-        });
-
-        const history = data.history || [];
-        
-        if (itemIndex >= 0 && itemIndex < history.length) {
-            history[itemIndex].status = newStatus;
-            history[itemIndex].statusUpdated = Date.now();
-            
-            chrome.storage.local.set({ history }, () => {
-                Utils.showNotification(`Status updated to ${this.statusConfig[newStatus].label}`);
-            });
-        }
     }
 
     async checkForAutoSearch() {
@@ -677,11 +590,8 @@ export class HistoryTab {    constructor() {
         this.elements.historySearch.value = taskId;
         this.toggleClearSearchButton();
         
-        // Clear any status filter to ensure we can find the item
-        this.elements.statusFilter.value = '';
-        
         // Load history with the search term
-        await this.loadHistory(taskId, '');
+        await this.loadHistory(taskId);
         
         // Show the auto-search indicator
         this.showAutoSearchIndicator(taskId);
