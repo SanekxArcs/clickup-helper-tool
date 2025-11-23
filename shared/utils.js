@@ -49,6 +49,23 @@ export class Utils {
         }
     }
 
+    static async copyHtmlToClipboard(text, html) {
+        try {
+            const blobText = new Blob([text], { type: 'text/plain' });
+            const blobHtml = new Blob([html], { type: 'text/html' });
+            const data = [new ClipboardItem({
+                'text/plain': blobText,
+                'text/html': blobHtml
+            })];
+            await navigator.clipboard.write(data);
+            this.showNotification('Copied to clipboard!');
+        } catch (err) {
+            console.error('Failed to copy HTML: ', err);
+            // Fallback to plain text
+            this.copyToClipboard(text);
+        }
+    }
+
     static formatTimestamp(timestamp) {
         return new Date(timestamp).toLocaleString();
     }

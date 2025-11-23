@@ -201,6 +201,20 @@ export class HistoryTab {    constructor() {
                 </div>
             </div>
         ` : '';
+
+        // GitLab MR Block
+        const gitlabBlock = item.gitlabMergeRequestUrl ? `
+            <div class="mt-1">
+                <a href="${Utils.escapeHtml(item.gitlabMergeRequestUrl)}" target="_blank" class="no-underline block group/gitlab">
+                    <div class="cursor-pointer bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-200 rounded px-2 py-1.5 font-mono text-xs text-gray-600 break-all transition-colors flex items-center gap-2" 
+                         title="Open GitLab Merge Request">
+                        <span class="opacity-50 text-[10px] select-none">MR:</span>
+                        <span class="flex-1 text-balance truncate">${Utils.escapeHtml(item.gitlabMergeRequestUrl)}</span>
+                        <span class="opacity-0 group-hover/gitlab:opacity-100 transition-opacity text-[10px]">↗</span>
+                    </div>
+                </a>
+            </div>
+        ` : '';
         
         return `
             <div class="group bg-white border border-gray-200 rounded-lg p-3 mb-3 transition-all duration-200 hover:shadow-md hover:border-gray-300" data-history-index="${realIndex}">
@@ -224,6 +238,7 @@ export class HistoryTab {    constructor() {
 
                 ${branchBlock}
                 ${commitBlock}
+                ${gitlabBlock}
             </div>
         `;
     }

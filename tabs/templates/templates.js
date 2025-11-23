@@ -19,7 +19,6 @@ export class TemplatesTab {
             reviewer1Select: document.getElementById('reviewer1Select'),
             reviewer2Select: document.getElementById('reviewer2Select'),
             mergeRequestLink: document.getElementById('mergeRequestLink'),
-            reviewMessage: document.getElementById('reviewMessage'),
             copyReviewBtn: document.getElementById('copyReviewBtn'),
             clearReviewBtn: document.getElementById('clearReviewBtn'),
             reviewSettingsBtn: document.getElementById('reviewSettingsBtn'),
@@ -27,7 +26,6 @@ export class TemplatesTab {
             // QA section
             testerSelect: document.getElementById('testerSelect'),
             branchName: document.getElementById('branchName'),
-            qaMessage: document.getElementById('qaMessage'),
             copyQaBtn: document.getElementById('copyQaBtn'),
             clearQaBtn: document.getElementById('clearQaBtn'),
             qaSettingsBtn: document.getElementById('qaSettingsBtn'),
@@ -35,16 +33,27 @@ export class TemplatesTab {
             // Resolved section
             resolvedReviewerSelect: document.getElementById('resolvedReviewerSelect'),
             resolvedLink: document.getElementById('resolvedLink'),
-            resolvedMessage: document.getElementById('resolvedMessage'),
             copyResolvedBtn: document.getElementById('copyResolvedBtn'),
             clearResolvedBtn: document.getElementById('clearResolvedBtn'),
             resolvedSettingsBtn: document.getElementById('resolvedSettingsBtn'),
+
+            // Skip Review section
+            skipReviewerSelect: document.getElementById('skipReviewerSelect'),
+            copySkipBtn: document.getElementById('copySkipBtn'),
+            clearSkipBtn: document.getElementById('clearSkipBtn'),
+            skipSettingsBtn: document.getElementById('skipSettingsBtn'),
             
             // Settings modal
             settingsModal: document.getElementById('templatesSettingsModal'),
             settingsCloseBtn: document.getElementById('templatesSettingsCloseBtn'),
             saveSettingsBtn: document.getElementById('saveTemplatesSettingsBtn'),
             cancelSettingsBtn: document.getElementById('cancelTemplatesSettingsBtn'),
+            
+            // Template inputs
+            templateReview: document.getElementById('templateReview'),
+            templateQa: document.getElementById('templateQa'),
+            templateResolved: document.getElementById('templateResolved'),
+            templateSkip: document.getElementById('templateSkip'),
             
             // Reviewers management
             newReviewerInput: document.getElementById('newReviewerInput'),
@@ -116,6 +125,20 @@ export class TemplatesTab {
             this.elements.resolvedSettingsBtn.addEventListener('click', () => this.openSettingsModal());
         }
 
+        // Skip Review section listeners
+        if (this.elements.skipReviewerSelect) {
+            this.elements.skipReviewerSelect.addEventListener('change', () => this.updateSkipMessage());
+        }
+        if (this.elements.copySkipBtn) {
+            this.elements.copySkipBtn.addEventListener('click', () => this.copySkipMessage());
+        }
+        if (this.elements.clearSkipBtn) {
+            this.elements.clearSkipBtn.addEventListener('click', () => this.clearSkipSection());
+        }
+        if (this.elements.skipSettingsBtn) {
+            this.elements.skipSettingsBtn.addEventListener('click', () => this.openSettingsModal());
+        }
+
         // Settings modal listeners
         if (this.elements.settingsCloseBtn) {
             this.elements.settingsCloseBtn.addEventListener('click', () => this.closeSettingsModal());
@@ -166,41 +189,29 @@ export class TemplatesTab {
         this.updateReviewMessage();
         this.updateQaMessage();
         this.updateResolvedMessage();
+        this.updateSkipMessage();
     }
 
     onDeactivate() {
         // Clean up any ongoing operations
     }
 
+    // Helper to create mention HTML
+    createMentionHtml(username) {
+        return `<a class="cu-mention" href="javascript:void(0);" data-name="${username}" data-notify="true"><span contenteditable="false">@${username}</span></a>`;
+    }
+
     // Review section methods
     updateReviewMessage() {
         const reviewer1 = this.elements.reviewer1Select.value;
-        const reviewer2 = this.elements.reviewer2Select.value;
-        const link = this.elements.mergeRequestLink.value.trim();
+        const isValid = !!reviewer1;
         
-        let message = '';
-        let isValid = false;
-        
-        if (reviewer1) {
-            if (reviewer2) {
-                // Two reviewers
-                message = `Hey @${reviewer1} and @${reviewer2}. Please make a code review for my merge request ${link ? link : '[link]'}.`;
-            } else {
-                // One reviewer
-                message = `Hey @${reviewer1}. Please make a code review for my merge request ${link ? link : '[link]'}.`;
-            }
-            isValid = true;
-        } else {
-            message = 'Select reviewers and add link to generate message';
-        }
-        
-        this.elements.reviewMessage.textContent = message;
         this.elements.copyReviewBtn.disabled = !isValid;
         
         if (isValid) {
-            this.elements.copyReviewBtn.classList.remove('disabled:bg-gray-300');
+            this.elements.copyReviewBtn.classList.remove('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
         } else {
-            this.elements.copyReviewBtn.classList.add('disabled:bg-gray-300');
+            this.elements.copyReviewBtn.classList.add('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
         }
     }
 
@@ -211,41 +222,58 @@ export class TemplatesTab {
         
         if (!reviewer1) return;
         
-        let message;
+        const linkText = link || '[link]';
+        const template = this.settings.templates?.review || 'Hey {reviewer}. Please make a code review for my merge request {link}.';
+        
+        // Plain text version
+        let textMessage = template
+            .replace('{reviewer}', `@${reviewer1}`)
+            .replace('{link}', linkText);
+            
         if (reviewer2) {
-            message = `Hey @${reviewer1} and @${reviewer2}. Please make a code review for my merge request ${link || '[link]'}.`;
-        } else {
-            message = `Hey @${reviewer1}. Please make a code review for my merge request ${link || '[link]'}.`;
+            // If template has {reviewer2}, use it. Otherwise append it or handle it smartly?
+            // For simplicity, if 2 reviewers are selected but template doesn't support it, we might have issues.
+            // Let's stick to the default logic if template is default, otherwise try to replace.
+            if (template.includes('{reviewer2}')) {
+                textMessage = textMessage.replace('{reviewer2}', `@${reviewer2}`);
+            } else if (template.includes('{reviewer}')) {
+                // If user customized template but didn't include {reviewer2}, we can't easily inject it.
+                // But let's assume standard usage:
+                textMessage = textMessage.replace(`@${reviewer1}`, `@${reviewer1} and @${reviewer2}`);
+            }
+        }
+
+        // HTML version
+        const r1Html = this.createMentionHtml(reviewer1);
+        const r2Html = reviewer2 ? this.createMentionHtml(reviewer2) : '';
+        
+        let htmlMessage = template
+            .replace('{reviewer}', r1Html)
+            .replace('{link}', linkText);
+            
+        if (reviewer2) {
+            if (template.includes('{reviewer2}')) {
+                htmlMessage = htmlMessage.replace('{reviewer2}', r2Html);
+            } else {
+                htmlMessage = htmlMessage.replace(r1Html, `${r1Html} and ${r2Html}`);
+            }
         }
         
-        Utils.copyToClipboard(message);
-        Utils.showNotification('Review message copied to clipboard!');
+        Utils.copyHtmlToClipboard(textMessage, htmlMessage);
+        Utils.showNotification('Review message copied!');
     }
 
     // QA section methods
     updateQaMessage() {
         const tester = this.elements.testerSelect.value;
-        const branch = this.elements.branchName.value.trim();
+        const isValid = !!tester;
         
-        let message = '';
-        let isValid = false;
-        
-        if (tester && branch) {
-            message = `@${tester} task is completed, please check: ${branch}`;
-            isValid = true;
-        } else if (tester) {
-            message = `@${tester} task is completed, please check: [branch name]`;
-        } else {
-            message = 'Select tester and add branch name to generate message';
-        }
-        
-        this.elements.qaMessage.textContent = message;
         this.elements.copyQaBtn.disabled = !isValid;
         
         if (isValid) {
-            this.elements.copyQaBtn.classList.remove('disabled:bg-gray-300');
+            this.elements.copyQaBtn.classList.remove('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
         } else {
-            this.elements.copyQaBtn.classList.add('disabled:bg-gray-300');
+            this.elements.copyQaBtn.classList.add('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
         }
     }
 
@@ -253,38 +281,37 @@ export class TemplatesTab {
         const tester = this.elements.testerSelect.value;
         const branch = this.elements.branchName.value.trim();
         
-        if (!tester || !branch) return;
+        if (!tester) return;
         
-        const message = `@${tester} task is completed, please check: ${branch}`;
+        const branchText = branch || '[branch name]';
+        const template = this.settings.templates?.qa || '{tester} task is completed, please check: {branch}';
         
-        Utils.copyToClipboard(message);
-        Utils.showNotification('QA message copied to clipboard!');
+        // Plain text
+        const textMessage = template
+            .replace('{tester}', `@${tester}`)
+            .replace('{branch}', branchText);
+        
+        // HTML version
+        const testerHtml = this.createMentionHtml(tester);
+        const htmlMessage = template
+            .replace('{tester}', testerHtml)
+            .replace('{branch}', branchText);
+        
+        Utils.copyHtmlToClipboard(textMessage, htmlMessage);
+        Utils.showNotification('QA message copied!');
     }
 
     // Resolved section methods
     updateResolvedMessage() {
         const reviewer = this.elements.resolvedReviewerSelect.value;
-        const link = this.elements.resolvedLink.value.trim();
+        const isValid = !!reviewer;
         
-        let message = '';
-        let isValid = false;
-        
-        if (reviewer && link) {
-            message = `@${reviewer} comments in GitLab is resolved please check ${link}`;
-            isValid = true;
-        } else if (reviewer) {
-            message = `@${reviewer} comments in GitLab is resolved please check [link]`;
-        } else {
-            message = 'Select reviewer and add link to generate message';
-        }
-        
-        this.elements.resolvedMessage.textContent = message;
         this.elements.copyResolvedBtn.disabled = !isValid;
         
         if (isValid) {
-            this.elements.copyResolvedBtn.classList.remove('disabled:bg-gray-300');
+            this.elements.copyResolvedBtn.classList.remove('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
         } else {
-            this.elements.copyResolvedBtn.classList.add('disabled:bg-gray-300');
+            this.elements.copyResolvedBtn.classList.add('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
         }
     }
 
@@ -292,12 +319,56 @@ export class TemplatesTab {
         const reviewer = this.elements.resolvedReviewerSelect.value;
         const link = this.elements.resolvedLink.value.trim();
         
-        if (!reviewer || !link) return;
+        if (!reviewer) return;
         
-        const message = `@${reviewer} comments in GitLab is resolved please check ${link}`;
+        const linkText = link || '[link]';
+        const template = this.settings.templates?.resolved || '{reviewer} comments in GitLab is resolved please check {link}';
         
-        Utils.copyToClipboard(message);
-        Utils.showNotification('Resolved message copied to clipboard!');
+        // Plain text
+        const textMessage = template
+            .replace('{reviewer}', `@${reviewer}`)
+            .replace('{link}', linkText);
+        
+        // HTML version
+        const reviewerHtml = this.createMentionHtml(reviewer);
+        const htmlMessage = template
+            .replace('{reviewer}', reviewerHtml)
+            .replace('{link}', linkText);
+        
+        Utils.copyHtmlToClipboard(textMessage, htmlMessage);
+        Utils.showNotification('Resolved message copied!');
+    }
+
+    // Skip Review section methods
+    updateSkipMessage() {
+        const reviewer = this.elements.skipReviewerSelect.value;
+        const isValid = !!reviewer;
+        
+        this.elements.copySkipBtn.disabled = !isValid;
+        
+        if (isValid) {
+            this.elements.copySkipBtn.classList.remove('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
+        } else {
+            this.elements.copySkipBtn.classList.add('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
+        }
+    }
+
+    copySkipMessage() {
+        const reviewer = this.elements.skipReviewerSelect.value;
+        
+        if (!reviewer) return;
+        
+        const template = this.settings.templates?.skip || '{reviewer} changes are minor so code review can be skiped.';
+        
+        // Plain text
+        const textMessage = template.replace('{reviewer}', `@${reviewer}`);
+        
+        // HTML version
+        const reviewerHtml = this.createMentionHtml(reviewer);
+        const htmlMessage = template.replace('{reviewer}', reviewerHtml);
+        
+        Utils.copyHtmlToClipboard(textMessage, htmlMessage);
+        Utils.showNotification('Skip review message copied!');
     }
 
     // Method to auto-fill from history (called from History tab)
@@ -327,8 +398,24 @@ export class TemplatesTab {
             testers: ['tester', 'qa1', 'qa2', 'testuser3'],
             favoriteReviewer1: '',
             favoriteReviewer2: '',
-            favoriteTester: ''
+            favoriteTester: '',
+            templates: {
+                review: 'Hey {reviewer}. Please make a code review for my merge request {link}.',
+                qa: '{tester} task is completed, please check: {branch}',
+                resolved: '{reviewer} comments in GitLab is resolved please check {link}',
+                skip: '{reviewer} changes are minor so code review can be skiped.'
+            }
         };
+        
+        // Ensure templates object exists for legacy settings
+        if (!this.settings.templates) {
+            this.settings.templates = {
+                review: 'Hey {reviewer}. Please make a code review for my merge request {link}.',
+                qa: '{tester} task is completed, please check: {branch}',
+                resolved: '{reviewer} comments in GitLab is resolved please check {link}',
+                skip: '{reviewer} changes are minor so code review can be skiped.'
+            };
+        }
         
         this.populateDropdowns();
         this.setFavoriteDefaults();
@@ -339,6 +426,14 @@ export class TemplatesTab {
         this.settings.favoriteReviewer1 = this.elements.favoriteReviewer1.value;
         this.settings.favoriteReviewer2 = this.elements.favoriteReviewer2.value;
         this.settings.favoriteTester = this.elements.favoriteTester.value;
+        
+        // Save templates
+        this.settings.templates = {
+            review: this.elements.templateReview.value,
+            qa: this.elements.templateQa.value,
+            resolved: this.elements.templateResolved.value,
+            skip: this.elements.templateSkip.value
+        };
         
         // Save to storage
         chrome.storage.local.set({ templatesSettings: this.settings }, () => {
@@ -351,9 +446,11 @@ export class TemplatesTab {
 
     populateDropdowns() {
         // Clear existing options (except first "Select..." option)
-        [this.elements.reviewer1Select, this.elements.reviewer2Select, this.elements.resolvedReviewerSelect].forEach(select => {
-            while (select.children.length > 1) {
-                select.removeChild(select.lastChild);
+        [this.elements.reviewer1Select, this.elements.reviewer2Select, this.elements.resolvedReviewerSelect, this.elements.skipReviewerSelect].forEach(select => {
+            if (select) {
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
             }
         });
         
@@ -363,11 +460,13 @@ export class TemplatesTab {
 
         // Add reviewers to dropdowns
         this.settings.reviewers.forEach(reviewer => {
-            [this.elements.reviewer1Select, this.elements.reviewer2Select, this.elements.resolvedReviewerSelect].forEach(select => {
-                const option = document.createElement('option');
-                option.value = reviewer;
-                option.textContent = `@${reviewer}`;
-                select.appendChild(option);
+            [this.elements.reviewer1Select, this.elements.reviewer2Select, this.elements.resolvedReviewerSelect, this.elements.skipReviewerSelect].forEach(select => {
+                if (select) {
+                    const option = document.createElement('option');
+                    option.value = reviewer;
+                    option.textContent = `@${reviewer}`;
+                    select.appendChild(option);
+                }
             });
         });
 
@@ -427,6 +526,14 @@ export class TemplatesTab {
         this.settings.testers.forEach((tester, index) => {
             this.addTesterToList(tester, index);
         });
+
+        // Populate template inputs
+        if (this.settings.templates) {
+            this.elements.templateReview.value = this.settings.templates.review || '';
+            this.elements.templateQa.value = this.settings.templates.qa || '';
+            this.elements.templateResolved.value = this.settings.templates.resolved || '';
+            this.elements.templateSkip.value = this.settings.templates.skip || '';
+        }
 
         // Populate favorite dropdowns in modal
         this.populateFavoriteDropdowns();
@@ -553,5 +660,10 @@ export class TemplatesTab {
         this.elements.resolvedReviewerSelect.value = this.settings.favoriteReviewer1 || '';
         this.elements.resolvedLink.value = '';
         this.updateResolvedMessage();
+    }
+
+    clearSkipSection() {
+        this.elements.skipReviewerSelect.value = this.settings.favoriteReviewer1 || '';
+        this.updateSkipMessage();
     }
 }
